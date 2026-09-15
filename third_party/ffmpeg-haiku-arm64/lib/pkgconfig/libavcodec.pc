@@ -1,0 +1,14 @@
+prefix=/root/ffmpeg-haiku-arm64
+exec_prefix=${prefix}
+libdir=/root/ffmpeg-haiku-arm64/lib
+includedir=/root/ffmpeg-haiku-arm64/include
+
+Name: libavcodec
+Description: FFmpeg codec library
+Version: 60.31.102
+Requires: 
+Requires.private: libavutil >= 58.29.100
+Conflicts:
+Libs: -L${libdir}  -lavcodec 
+Libs.private: -pthread -lm -latomic
+Cflags: -I${includedir}

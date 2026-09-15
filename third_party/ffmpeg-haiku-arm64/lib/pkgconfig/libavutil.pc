@@ -1,0 +1,14 @@
+prefix=/root/ffmpeg-haiku-arm64
+exec_prefix=${prefix}
+libdir=/root/ffmpeg-haiku-arm64/lib
+includedir=/root/ffmpeg-haiku-arm64/include
+
+Name: libavutil
+Description: FFmpeg utility library
+Version: 58.29.100
+Requires: 
+Requires.private: 
+Conflicts:
+Libs: -L${libdir}  -lavutil 
+Libs.private: -pthread -lm -lssl -lcrypto -latomic
+Cflags: -I${includedir}
