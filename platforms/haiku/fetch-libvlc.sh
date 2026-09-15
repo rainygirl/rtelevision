@@ -13,6 +13,22 @@ ARCH="$(uname -m)"
 DEST="$ROOT/third_party/vlc-haiku-$ARCH"
 CACHE="$ROOT/third_party/.hpkg-cache-$ARCH"
 
+# On the x86_gcc2 hybrid the modern compiler and its libraries are the "x86"
+# secondary architecture: packages are called vlc_x86, live in lib/x86 and
+# develop/headers/x86, and the .hpkg files carry the primary arch suffix.
+PKG_SUFFIX=""; LIBSUB=""; HPKG_ARCHES="$ARCH any"
+if command -v getarch >/dev/null 2>&1; then
+    PRIMARY="$(getarch -p 2>/dev/null || true)"
+    SECONDARY="$(getarch -s 2>/dev/null | head -n 1 || true)"
+    if [ "$PRIMARY" = x86_gcc2 ] && [ "$SECONDARY" = x86 ]; then
+        PKG_SUFFIX=_x86; LIBSUB=x86
+        HPKG_ARCHES="x86_gcc2 x86 any"
+    elif [ -n "$PRIMARY" ]; then
+        HPKG_ARCHES="$PRIMARY any"
+    fi
+fi
+SYSLIB="/boot/system/lib${LIBSUB:+/$LIBSUB}"
+
 if [ -f "$DEST/lib/libvlc.so" ] && [ -d "$DEST/plugins" ]; then
     echo "libVLC already vendored at $DEST"
     exit 0
@@ -35,7 +51,7 @@ BASE="$(pkgman list-repos | grep -A1 HaikuPorts | grep base-url | head -n 1 \
 echo "repository: $BASE"
 
 # --- what would be installed (pkgman is told "no", so it only prints the plan)
-echo no | pkgman install vlc vlc_devel > "$WORK/plan.txt" 2>&1 || true
+echo no | pkgman install "vlc$PKG_SUFFIX" "vlc${PKG_SUFFIX}_devel" > "$WORK/plan.txt" 2>&1 || true
 grep 'install package' "$WORK/plan.txt" | sed 's/.*install package \([^ ]*\).*/\1/' \
     | sort -u > "$WORK/pkgs.txt" || true
 
@@ -43,11 +59,11 @@ if [ ! -s "$WORK/pkgs.txt" ]; then
     # Everything is already on the system: vendor straight out of packagefs.
     echo "vlc is already installed; copying out of the system instead"
     mkdir -p "$DEST/lib" "$DEST/include" "$DEST/plugins"
-    cp -a /boot/system/develop/headers/vlc "$DEST/include/vlc"
-    cp -a /boot/system/lib/libvlc.so* /boot/system/lib/libvlccore.so* "$DEST/lib/" 2>/dev/null || true
-    cp -a /boot/system/develop/lib/libvlc*.so "$DEST/lib/" 2>/dev/null || true
+    cp -a "/boot/system/develop/headers${LIBSUB:+/$LIBSUB}/vlc" "$DEST/include/vlc"
+    cp -a "$SYSLIB"/libvlc.so* "$SYSLIB"/libvlccore.so* "$DEST/lib/" 2>/dev/null || true
+    cp -a "/boot/system/develop/lib${LIBSUB:+/$LIBSUB}"/libvlc*.so "$DEST/lib/" 2>/dev/null || true
     [ -e "$DEST/lib/libvlc.so" ] || ln -sf libvlc.so.5 "$DEST/lib/libvlc.so"
-    cp -a /boot/system/lib/vlc/plugins/. "$DEST/plugins/"
+    cp -a "$SYSLIB/vlc/plugins/." "$DEST/plugins/"
     echo "vendored libVLC -> $DEST"
     exit 0
 fi
@@ -56,7 +72,7 @@ fi
 # but this app uses neither, and they are by far the biggest downloads.
 skip_package() {
     case "$1" in
-        qt5-*|qt6-*|qthaiku*|phonon*|gst_*|gstreamer-*) return 0 ;;
+        qt5*|qt6*|qthaiku*|phonon*|gst_*|gstreamer*) return 0 ;;
         *) return 1 ;;
     esac
 }
@@ -65,7 +81,7 @@ echo "fetching packages (nothing is installed)..."
 while read -r pkg; do
     [ -n "$pkg" ] || continue
     if skip_package "$pkg"; then continue; fi
-    for suffix in "$ARCH" any; do
+    for suffix in $HPKG_ARCHES; do
         file="$pkg-$suffix.hpkg"
         if [ -f "$CACHE/$file" ]; then break; fi
         if $DL "$CACHE/$file.part" "$BASE/packages/$file" 2>/dev/null; then
@@ -86,12 +102,13 @@ done
 echo "assembling $DEST"
 rm -rf "$DEST"
 mkdir -p "$DEST/lib" "$DEST/include" "$DEST/plugins"
-cp -a "$WORK/root/develop/headers/vlc" "$DEST/include/vlc" 2>/dev/null || true
-cp -a "$WORK/root/lib/"libvlc.so* "$DEST/lib/" 2>/dev/null || true
-cp -a "$WORK/root/lib/"libvlccore.so* "$DEST/lib/" 2>/dev/null || true
-cp -a "$WORK/root/lib/vlc/plugins/." "$DEST/plugins/" 2>/dev/null || true
+RLIB="$WORK/root/lib${LIBSUB:+/$LIBSUB}"
+cp -a "$WORK/root/develop/headers${LIBSUB:+/$LIBSUB}/vlc" "$DEST/include/vlc" 2>/dev/null || true
+cp -a "$RLIB/"libvlc.so* "$DEST/lib/" 2>/dev/null || true
+cp -a "$RLIB/"libvlccore.so* "$DEST/lib/" 2>/dev/null || true
+cp -a "$RLIB/vlc/plugins/." "$DEST/plugins/" 2>/dev/null || true
 # Haiku keeps the unversioned link-time symlinks under develop/lib.
-cp -a "$WORK/root/develop/lib/"libvlc*.so "$DEST/lib/" 2>/dev/null || true
+cp -a "$WORK/root/develop/lib${LIBSUB:+/$LIBSUB}/"libvlc*.so "$DEST/lib/" 2>/dev/null || true
 [ -e "$DEST/lib/libvlc.so" ] || ln -sf libvlc.so.5 "$DEST/lib/libvlc.so"
 [ -e "$DEST/lib/libvlccore.so" ] || ln -sf libvlccore.so.9 "$DEST/lib/libvlccore.so"
 
@@ -112,8 +129,8 @@ while [ "$pass" -lt 8 ]; do
     while read -r soname; do
         [ -n "$soname" ] || continue
         [ -e "$DEST/lib/$soname" ] && continue
-        [ -e "/boot/system/lib/$soname" ] && continue   # part of the base system
-        src="$(find "$WORK/root/lib" -name "$soname" 2>/dev/null | head -n 1)"
+        [ -e "$SYSLIB/$soname" ] && continue   # part of the base system
+        src="$(find "$RLIB" -name "$soname" 2>/dev/null | head -n 1)"
         [ -n "$src" ] || continue
         cp -aL "$src" "$DEST/lib/$soname" && copied=$((copied + 1))
     done < "$WORK/missing.txt"
@@ -129,7 +146,7 @@ for plugin in "$DEST"/plugins/*/*.so; do
     for soname in $(readelf -d "$plugin" 2>/dev/null \
                     | sed -n 's/.*Shared library: \[\(.*\)\].*/\1/p'); do
         [ -e "$DEST/lib/$soname" ] && continue
-        [ -e "/boot/system/lib/$soname" ] && continue
+        [ -e "$SYSLIB/$soname" ] && continue
         unresolved=1
     done
     if [ "$unresolved" = 1 ]; then rm -f "$plugin"; removed=$((removed + 1)); fi
