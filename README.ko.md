@@ -111,6 +111,8 @@ macOS의 두 번째 줄과 Haiku의 `settings` 폴더에는 채널 목록 캐시
 
 MIT이고 [LICENSE](LICENSE)에 있습니다. 함께 들어 있는 VLC와 FFmpeg 라이브러리는 각자의
 라이선스를 따르며 [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md)에 정리되어 있습니다.
+채널 목록은 [iptv-org/iptv](https://github.com/iptv-org/iptv)의 데이터를 참고하며,
+그 라이선스는 iptv-org의 것을 따릅니다.
 
 ## AI 활용 고지
 

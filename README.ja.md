@@ -115,6 +115,8 @@ macOS の 2 行目と Haiku の `settings` フォルダには、チャンネル�
 
 MIT です([LICENSE](LICENSE))。同梱の VLC と FFmpeg のライブラリはそれぞれのライセンス
 のままで、[THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) にまとめてあります。
+チャンネル一覧は [iptv-org/iptv](https://github.com/iptv-org/iptv) のデータを参考にしており、
+そのライセンスは iptv-org のものに従います。
 
 ## AI 利用について
 

@@ -119,6 +119,8 @@ dei canali e i tuoi preferiti.
 
 MIT, vedi [LICENSE](LICENSE). Le librerie VLC e FFmpeg incluse mantengono le
 proprie licenze, elencate in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
+La lista dei canali proviene da [iptv-org/iptv](https://github.com/iptv-org/iptv)
+e segue la licenza di iptv-org.
 
 ## Nota sull'uso dell'IA
 

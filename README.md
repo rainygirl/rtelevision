@@ -117,6 +117,8 @@ cache and your favorites.
 
 MIT, see [LICENSE](LICENSE). The bundled VLC and FFmpeg libraries keep their
 own licences, listed in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
+The channel list is taken from [iptv-org/iptv](https://github.com/iptv-org/iptv)
+and follows the iptv-org licence.
 
 ## AI disclosure
 
