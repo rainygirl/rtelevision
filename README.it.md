@@ -23,7 +23,7 @@ Non serve installare VLC da nessuna parte: R Television ha il suo.
 
 ![R Television su macOS](docs/screenshots/macos.png)
 
-1. Scarica `R-Television-1.0.0-macOS.dmg`.
+1. Scarica [`R-Television-1.0.0-macOS.dmg`](platforms/macos/dist/R-Television-1.0.0-macOS.dmg).
 2. Aprilo e trascina **R Television** in **Applicazioni**.
 3. Apri R Television da Applicazioni.
 

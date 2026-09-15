@@ -22,7 +22,7 @@
 
 ![macOS의 R Television](docs/screenshots/macos.png)
 
-1. `R-Television-1.0.0-macOS.dmg`를 다운로드합니다.
+1. [`R-Television-1.0.0-macOS.dmg`](platforms/macos/dist/R-Television-1.0.0-macOS.dmg)를 다운로드합니다.
 2. 열어서 **R Television**을 **응용 프로그램** 폴더로 끌어다 놓습니다.
 3. 응용 프로그램 폴더에서 R Television을 엽니다.
 
