@@ -22,6 +22,8 @@ MainWindow::MainWindow(std::shared_ptr<AppController> controller)
     : BWindow(BRect(40, 40, 1000, 740), "R Television", B_TITLED_WINDOW,
               B_ASYNCHRONOUS_CONTROLS | B_QUIT_ON_WINDOW_CLOSE),
       fController(std::move(controller)),
+      fSidebar(NULL),
+      fControlBar(NULL),
       fChannelList(NULL),
       fSearchField(NULL),
       fCategoryButton(NULL),
@@ -121,23 +123,28 @@ void MainWindow::BuildLayout() {
         .Add(fStatusView)
         .SetInsets(6, 6, 6, 6);
     sidebar->SetExplicitMinSize(BSize(260, B_SIZE_UNSET));
+    fSidebar = sidebar;
+
+    // Its own view rather than a nested group, so full screen can hide it.
+    BGroupView* controls = new BGroupView(B_HORIZONTAL);
+    BLayoutBuilder::Group<>(controls)
+        .Add(fPlayPauseButton)
+        .Add(stopButton)
+        .Add(fFavoriteButton)
+        .AddGroup(B_VERTICAL, 0)
+            .Add(fNowPlayingView)
+            .Add(fStateView)
+        .End()
+        .AddGlue()
+        .Add(fVolumeSlider)
+        .Add(fullScreenButton)
+        .SetInsets(6, 6, 6, 6);
+    fControlBar = controls;
 
     BGroupView* playerPane = new BGroupView(B_VERTICAL, 0);
     BLayoutBuilder::Group<>(playerPane)
         .Add(fVideoView)
-        .AddGroup(B_HORIZONTAL)
-            .Add(fPlayPauseButton)
-            .Add(stopButton)
-            .Add(fFavoriteButton)
-            .AddGroup(B_VERTICAL, 0)
-                .Add(fNowPlayingView)
-                .Add(fStateView)
-            .End()
-            .AddGlue()
-            .Add(fVolumeSlider)
-            .Add(fullScreenButton)
-            .SetInsets(6, 6, 6, 6)
-        .End();
+        .Add(controls);
 
     // BSplitView takes the two panes; the sidebar keeps a modest share.
     BSplitView* split = new BSplitView(B_HORIZONTAL);
@@ -262,16 +269,22 @@ void MainWindow::RefreshPlaylist() {
     });
 }
 
+// Haiku has no BWindow::SetFullScreen; drop the border, fill the screen and
+// show the video alone. The split layout skips hidden items, so the sidebar's
+// divider disappears with it.
 void MainWindow::ToggleFullScreen() {
-    // Haiku has no BWindow::SetFullScreen; drop the border and fill the screen.
     if (!fFullScreen) {
         fSavedFrame = Frame();
+        fSidebar->Hide();
+        fControlBar->Hide();
         BScreen screen(this);
         BRect frame = screen.Frame();
         SetLook(B_NO_BORDER_WINDOW_LOOK);
         MoveTo(frame.left, frame.top);
         ResizeTo(frame.Width(), frame.Height());
     } else {
+        fSidebar->Show();
+        fControlBar->Show();
         SetLook(B_TITLED_WINDOW_LOOK);
         MoveTo(fSavedFrame.left, fSavedFrame.top);
         ResizeTo(fSavedFrame.Width(), fSavedFrame.Height());

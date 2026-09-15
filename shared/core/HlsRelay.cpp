@@ -1169,11 +1169,14 @@ std::string HlsRelay::open(const Channel& channel, const std::function<bool()>& 
     std::string mediaUrl = channel.url;
     Playlist playlist = fetch(mediaUrl, &base);
     if (cancelled()) return channel.url;
+    // The address the channel's URL really answered from, once the first fetch
+    // has established it; the player is spared the redirect.
+    const std::string directUrl = playlist.valid ? base : channel.url;
     if (playlist.valid && playlist.master) {
         if (playlist.variants.size() != 1 || playlist.alternateRenditions) {
             logf(settings_.verbose, "%s: adaptive (%zu variants), played directly",
                  channel.name.c_str(), playlist.variants.size());
-            return channel.url;
+            return directUrl;
         }
         mediaUrl = playlist.variants.front();
         playlist = fetch(mediaUrl, &base);
@@ -1182,7 +1185,7 @@ std::string HlsRelay::open(const Channel& channel, const std::function<bool()>& 
     if (!playlist.valid || playlist.master || playlist.endList || playlist.byteRange) {
         logf(settings_.verbose, "%s: not a live single-rendition playlist, played directly",
              channel.name.c_str());
-        return channel.url;
+        return directUrl;
     }
 
     std::lock_guard<std::mutex> lock(mutex_);

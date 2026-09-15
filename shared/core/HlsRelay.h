@@ -49,8 +49,11 @@ public:
 
     // Blocking. Fetches the channel's playlist and, if it can be relayed, starts
     // a session for it and returns the 127.0.0.1 address the player should open.
-    // Otherwise returns the channel's own URL. `cancelled` is polled while the
-    // network is busy. Any previous session ends first.
+    // Otherwise returns the URL the player should open directly: the channel's
+    // own, or where that redirected to if the playlist was fetched (some
+    // backends stall on a redirect that the probe already followed).
+    // `cancelled` is polled while the network is busy. Any previous session
+    // ends first.
     std::string open(const Channel& channel, const std::function<bool()>& cancelled,
                      bool* relayed);
 

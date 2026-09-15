@@ -28,23 +28,52 @@ using BPrivate::Network::BHttpResult;
 using BPrivate::Network::BUrlProtocolRoster;
 using BPrivate::Network::BUrlRequest;
 
+// BHttpRequest's own SetFollowLocation() does not act on every redirect (a
+// 307 comes back as is), so redirects are followed here: the same request is
+// repeated against the Location header, and the URL that finally answered is
+// reported as the effective one - relative playlist entries resolve against it.
+const int kMaxRedirects = 8;
+
+bool isRedirect(long status) {
+    return status == 301 || status == 302 || status == 303 || status == 307 || status == 308;
+}
+
 class HaikuHttpClient : public HttpClient {
 public:
     HttpResponse get(const HttpRequest& request) override {
-        HttpResponse resp;
-        resp.effectiveUrl = request.url;
+        std::string url = request.url;
+        for (int hop = 0;; ++hop) {
+            Reply resp = fetch(request, url);
+            if (!isRedirect(resp.status) || resp.location.empty() || hop >= kMaxRedirects ||
+                (request.shouldAbort && request.shouldAbort()))
+                return resp;
+            const BUrl base(url.c_str(), false);
+            const BUrl next(base, BString(resp.location.c_str()));
+            if (!next.IsValid()) return resp;
+            url = next.UrlString().String();
+        }
+    }
+
+private:
+    struct Reply : HttpResponse {
+        std::string location;  // Location header of a redirect reply
+    };
+
+    Reply fetch(const HttpRequest& request, const std::string& requestUrl) {
+        Reply resp;
+        resp.effectiveUrl = requestUrl;
 
         // Two BUrl(const char*) overloads exist; name the encode flag to pick one.
-        BUrl url(request.url.c_str(), false);
+        BUrl url(requestUrl.c_str(), false);
         if (!url.IsValid()) {
-            resp.error = "invalid URL: " + request.url;
+            resp.error = "invalid URL: " + requestUrl;
             return resp;
         }
 
         BMallocIO output;
         BUrlRequest* raw = BUrlProtocolRoster::MakeRequest(url, &output, NULL, NULL);
         if (raw == NULL) {
-            resp.error = "no protocol handler for " + request.url;
+            resp.error = "no protocol handler for " + requestUrl;
             return resp;
         }
         std::unique_ptr<BUrlRequest> owned(raw);
@@ -88,6 +117,8 @@ public:
         }
         status_t exitValue = B_OK;
         wait_for_thread(thread, &exitValue);
+        // Redirects BHttpRequest followed by itself moved the request's URL.
+        if (raw->Url().IsValid()) resp.effectiveUrl = raw->Url().UrlString().String();
 
         if (http != NULL) {
             const BHttpResult& result = dynamic_cast<const BHttpResult&>(raw->Result());
@@ -97,6 +128,8 @@ public:
             if (etag != NULL) resp.etag = etag;
             const char* lastModified = responseHeaders["Last-Modified"];
             if (lastModified != NULL) resp.lastModified = lastModified;
+            const char* location = responseHeaders["Location"];
+            if (location != NULL) resp.location = location;
             const char* contentRange = responseHeaders["Content-Range"];
             if (resp.status == 206 && contentRange != NULL) {
                 const char* slash = std::strrchr(contentRange, '/');

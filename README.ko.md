@@ -96,14 +96,9 @@ cd platforms/linux && make uninstall
 Haiku:
 
 ```sh
-rm -f ~/config/non-packaged/apps/RTelevision ~/config/settings/deskbar/menu/Applications/RTelevision
+rm -rf ~/config/non-packaged/apps/RTelevision ~/config/settings/deskbar/menu/Applications/RTelevision
 rm -rf ~/config/non-packaged/data/RTelevision ~/config/settings/RTelevision
-rm -rf ~/config/non-packaged/apps/vlc ~/config/non-packaged/apps/libvlc*.so* \
-       ~/config/non-packaged/apps/libav*.so* ~/config/non-packaged/apps/libsw*.so*
 ```
-
-Haiku의 마지막 줄은 R Television이 자기 옆에 복사해 둔 미디어 라이브러리를 지웁니다.
-다른 프로그램에서도 쓰고 있다면 실행하지 마세요.
 
 macOS의 두 번째 줄과 Haiku의 `settings` 폴더에는 채널 목록 캐시와 즐겨찾기가 들어 있습니다.
 

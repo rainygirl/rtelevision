@@ -1,9 +1,12 @@
 #include <vlc/vlc.h>
 
 #include <atomic>
+#include <chrono>
+#include <condition_variable>
 #include <cstdlib>
 #include <cstring>
 #include <mutex>
+#include <thread>
 
 #include "MediaPlayer.h"
 #include "Paths.h"
@@ -15,6 +18,12 @@ namespace {
 class VlcMediaPlayer : public MediaPlayer {
 public:
     ~VlcMediaPlayer() override {
+        {
+            std::lock_guard<std::mutex> lock(watchdogMutex_);
+            quit_ = true;
+        }
+        watchdogCv_.notify_all();
+        if (watchdog_.joinable()) watchdog_.join();
         if (player_) {
             libvlc_media_player_stop(player_);
             libvlc_media_player_release(player_);
@@ -66,6 +75,7 @@ public:
         for (libvlc_event_e e : events) libvlc_event_attach(em, e, &VlcMediaPlayer::onEvent, this);
 
         libvlc_audio_set_volume(player_, volume_);
+        watchdog_ = std::thread([this] { watch(); });
         return true;
     }
 
@@ -136,6 +146,7 @@ public:
         libvlc_media_release(media);
 
         paused_ = false;
+        playing_ = false;
         notify(PlaybackState::Opening, channel.name);
         return libvlc_media_player_play(player_) == 0;
     }
@@ -144,6 +155,7 @@ public:
         if (!player_) return;
         libvlc_media_player_stop(player_);
         paused_ = false;
+        playing_ = false;
         notify(PlaybackState::Stopped, std::string());
     }
 
@@ -225,21 +237,64 @@ private:
         auto* self = static_cast<VlcMediaPlayer*>(opaque);
         switch (event->type) {
             case libvlc_MediaPlayerOpening: self->notify(PlaybackState::Opening, ""); break;
-            case libvlc_MediaPlayerBuffering:
-                self->notify(PlaybackState::Buffering,
-                             std::to_string(static_cast<int>(
-                                 event->u.media_player_buffering.new_cache)) + "%");
+            case libvlc_MediaPlayerBuffering: {
+                // While a stream plays, libVLC keeps reporting its cache level and
+                // sends no Playing event after a refill; a full cache then means
+                // playing, not "still buffering".
+                const int cache = static_cast<int>(event->u.media_player_buffering.new_cache);
+                if (self->playing_ && cache >= 100)
+                    self->notify(PlaybackState::Playing, "");
+                else
+                    self->notify(PlaybackState::Buffering, std::to_string(cache) + "%");
                 break;
-            case libvlc_MediaPlayerPlaying: self->notify(PlaybackState::Playing, ""); break;
+            }
+            case libvlc_MediaPlayerPlaying:
+                self->playing_ = true;
+                self->notify(PlaybackState::Playing, "");
+                break;
             case libvlc_MediaPlayerPaused: self->notify(PlaybackState::Paused, ""); break;
-            case libvlc_MediaPlayerStopped: self->notify(PlaybackState::Stopped, ""); break;
+            case libvlc_MediaPlayerStopped:
+                self->playing_ = false;
+                self->notify(PlaybackState::Stopped, "");
+                break;
             case libvlc_MediaPlayerEndReached:
+                self->playing_ = false;
                 self->notify(PlaybackState::Stopped, "stream ended");
                 break;
             case libvlc_MediaPlayerEncounteredError:
+                self->playing_ = false;
                 self->notify(PlaybackState::Error, "stream unavailable");
                 break;
             default: break;
+        }
+    }
+
+    // libVLC's input thread can end without a Stopped, EndReached or Error
+    // event (seen on Haiku after an HTTP redirect). The player then reports
+    // Ended or Stopped while this object still says Opening or Buffering, and
+    // the front end would wait forever. A few consecutive polls in that
+    // condition turn it into an error report.
+    void watch() {
+        int strikes = 0;
+        std::unique_lock<std::mutex> lock(watchdogMutex_);
+        while (!watchdogCv_.wait_for(lock, std::chrono::milliseconds(500), [this] { return quit_; })) {
+            const PlaybackState ours = state_.load();
+            if (ours != PlaybackState::Opening && ours != PlaybackState::Buffering) {
+                strikes = 0;
+                continue;
+            }
+            const libvlc_state_t theirs = libvlc_media_player_get_state(player_);
+            const bool dead = theirs == libvlc_Ended || theirs == libvlc_Error;
+            if (!dead) {
+                strikes = 0;
+                continue;
+            }
+            if (++strikes < 4) continue;
+            strikes = 0;
+            lock.unlock();
+            notify(theirs == libvlc_Error ? PlaybackState::Error : PlaybackState::Stopped,
+                   theirs == libvlc_Error ? "stream unavailable" : "stream ended");
+            lock.lock();
         }
     }
 
@@ -259,9 +314,14 @@ private:
     std::mutex callbackMutex_;
     StateCallback callback_;
     VideoFrameSink* sink_ = nullptr;
+    std::thread watchdog_;
+    std::mutex watchdogMutex_;
+    std::condition_variable watchdogCv_;
+    bool quit_ = false;
     int volume_ = 80;
     bool muted_ = false;
     bool paused_ = false;
+    std::atomic<bool> playing_{false};  // a Playing event arrived for the current stream
 };
 
 }  // namespace

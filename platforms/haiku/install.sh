@@ -14,8 +14,11 @@ SHARED=../../shared
 BUILD=build
 APP=RTelevision
 
-# ~/config/apps is packagefs and read-only; user binaries go here.
-APPS_DIR=${APPS_DIR:-$HOME/config/non-packaged/apps}
+# ~/config/apps is packagefs and read-only; user binaries go here. The app has a
+# directory of its own because the runtime loader looks for a program's
+# libraries in <its directory>/lib - the only place the VLC plugins, which carry
+# no rpath, find the bundled libraries they need.
+APPS_DIR=${APPS_DIR:-$HOME/config/non-packaged/apps/$APP}
 DATA_DIR=${DATA_DIR:-$HOME/config/non-packaged/data/RTelevision}
 DESKBAR_DIR=$HOME/config/settings/deskbar/menu/Applications
 
@@ -86,14 +89,14 @@ else
     if [ $FFMPEG = 1 ]; then
         CXXFLAGS="$CXXFLAGS -I$FF_VENDOR/include"
         LIBS="$LIBS -L$FF_VENDOR/lib -lavformat -lavcodec -lswscale -lswresample -lavutil"
-        LIBS="$LIBS -Wl,-rpath,\$ORIGIN"
+        LIBS="$LIBS -Wl,-rpath,\$ORIGIN/lib"
     fi
     if [ $VLC = 1 ]; then
         if [ -e "$VLC_VENDOR/include/vlc/vlc.h" ]; then
             CXXFLAGS="$CXXFLAGS -I$VLC_VENDOR/include"
             # $ORIGIN: the runtime loader does not search the binary's own
             # directory by itself.
-            LIBS="$LIBS -L$VLC_VENDOR/lib -lvlc -lvlccore -Wl,-rpath,\$ORIGIN"
+            LIBS="$LIBS -L$VLC_VENDOR/lib -lvlc -lvlccore -Wl,-rpath,\$ORIGIN/lib"
         else
             LIBS="$LIBS -lvlc"
         fi
@@ -125,6 +128,15 @@ fi
 [ "${1:-}" = "--build" ] && exit 0
 
 # --------------------------------------------------------------------- install
+# Earlier versions put the binary and the libraries straight into apps/.
+PARENT=$(dirname "$APPS_DIR")
+if [ -f "$PARENT/$APP" ]; then
+    echo "removing the old flat installation in $PARENT"
+    rm -rf "$PARENT/$APP" "$PARENT/vlc" "$PARENT/seed-playlist.m3u"
+    for lib in "$VLC_VENDOR"/lib/*.so* "$FF_VENDOR"/lib/*.so*; do
+        [ -e "$lib" ] && rm -f "$PARENT/$(basename "$lib")"
+    done
+fi
 mkdir -p "$APPS_DIR" "$DATA_DIR" "$DESKBAR_DIR"
 cp "$BUILD/$APP" "$APPS_DIR/$APP"
 set_attrs "$APPS_DIR/$APP"
@@ -134,19 +146,19 @@ cp ../../LICENSE ../../THIRD-PARTY-NOTICES.md "$DATA_DIR/"
 rm -rf "$DATA_DIR/licenses"
 cp -a ../../licenses "$DATA_DIR/licenses"
 if [ $FFMPEG = 1 ]; then
-    cp -a "$FF_VENDOR/lib/"*.so* "$APPS_DIR/" 2>/dev/null || true
+    mkdir -p "$APPS_DIR/lib"
+    cp -a "$FF_VENDOR/lib/"*.so* "$APPS_DIR/lib/" 2>/dev/null || true
     cp ../../resources/seed-playlist.m3u "$APPS_DIR/seed-playlist.m3u"
 fi
 if [ -d "$VLC_VENDOR/plugins" ]; then
-    # Haiku's runtime loader searches the binary's own directory, so the
-    # bundled libraries sit right next to it.
-    cp -a "$VLC_VENDOR/lib/"*.so* "$APPS_DIR/" 2>/dev/null || true
+    mkdir -p "$APPS_DIR/lib"
+    cp -a "$VLC_VENDOR/lib/"*.so* "$APPS_DIR/lib/" 2>/dev/null || true
     rm -rf "$APPS_DIR/vlc"
     mkdir -p "$APPS_DIR/vlc"
     cp -a "$VLC_VENDOR/plugins" "$APPS_DIR/vlc/plugins"
     cp ../../resources/seed-playlist.m3u "$APPS_DIR/seed-playlist.m3u"
 fi
-ln -sf "$APPS_DIR/$APP" "$DESKBAR_DIR/$APP"
+ln -sfn "$APPS_DIR/$APP" "$DESKBAR_DIR/$APP"
 
 echo
 echo "installed: $APPS_DIR/$APP"

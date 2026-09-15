@@ -223,7 +223,7 @@ and run `./install.sh`; it picks the FFmpeg backend up by itself.
 |---|---|---|---|
 | macOS | `platforms/macos/build/<archs>/R Television.app` (about 193 MB, mostly VLC plugins) | `/Applications/R Television.app` | `~/Library/Application Support/RTelevision/` |
 | Linux | `platforms/linux/build/` | `~/.local/lib/RTelevision/`, `~/.local/bin/r-television`, `.desktop` entry and icon under `~/.local/share` | `~/.local/share/RTelevision/` |
-| Haiku | `platforms/haiku/build/` | `~/config/non-packaged/apps/RTelevision` plus bundled `.so` files (and `vlc/plugins` on x86_64), snapshot in `~/config/non-packaged/data/RTelevision/`, Deskbar link | `~/config/settings/RTelevision/` |
+| Haiku | `platforms/haiku/build/` | `~/config/non-packaged/apps/RTelevision/` holding the binary, `lib/` with the bundled `.so` files and `vlc/plugins`; snapshot in `~/config/non-packaged/data/RTelevision/`, Deskbar link | `~/config/settings/RTelevision/` |
 
 Every bundle also carries `LICENSE`, `THIRD-PARTY-NOTICES.md` and `licenses/`.
 `~/config/apps` on Haiku is read-only packagefs, hence `non-packaged`.
@@ -259,18 +259,32 @@ The core without a window; the first thing to bring up on a new platform.
   master playlists and never fetches video; the same channels play with 3.0.23.
 - On Linux the default XVideo overlay is not captured by screenshots; use
   `RTV_VLC_ARGS="--vout=xcb_x11"` when taking them.
-- Haiku's runtime loader does not search the binary's directory, so builds link
-  with `-Wl,-rpath,'$ORIGIN'`, and `-lvlccore` is on the link line because an
-  rpath does not carry over to a dependency's dependencies.
+- Haiku's runtime loader does not search the binary's directory, but it does
+  search `<binary's directory>/lib`. The bundled libraries live there: the app
+  finds libvlc through `-Wl,-rpath,'$ORIGIN/lib'`, and the VLC plugins, which
+  have no rpath, find their own dependencies (libdvbpsi for the TS demuxer)
+  through the loader's default path. Libraries placed next to the binary were
+  invisible to the plugins, so TS-based HLS never played. `-lvlccore` is on the
+  link line because an rpath does not carry over to a dependency's dependencies.
 - Haiku without a sound device: `media_addon_server` may quit; VLC builds can
   run with `RTV_VLC_ARGS="--no-audio"`.
 - Haiku's `nsdispatch()` crashes after a thread is cancelled inside a name
   lookup, which libVLC does when a stream is stopped while still connecting.
   `platforms/haiku/ResolverGuard.cpp` interposes the resolver functions and
   runs them with cancellation disabled.
-- Haiku `make uninstall` removes the binary, the Deskbar link and the snapshot
-  folder, but not the bundled `.so` files, `vlc/plugins` or the cache in
-  `~/config/settings/RTelevision`.
+- Haiku's `socket()` ignores `SOCK_NONBLOCK` for the socket itself (fcntl
+  reports the flag, `recv()` still blocks), which left libVLC's interruptible
+  read loops stuck and `libvlc_media_player_stop()` waiting forever after a
+  stream had played. `platforms/haiku/SocketGuard.cpp` interposes `socket()`
+  and `accept4()` and sets the flag with `fcntl()` instead.
+- Haiku's `BHttpRequest` does not follow a 307 even with `SetFollowLocation`,
+  so `HaikuHttpClient` follows redirects itself and reports the final URL. The
+  relay passes that URL to the backend when it declines a channel: libVLC on
+  Haiku ends its input silently on such a redirect. `VlcMediaPlayer` also runs
+  a watchdog that turns an input that ended without an event into an error.
+- Haiku `make uninstall` removes the app directory (binary, bundled `.so`
+  files, `vlc/plugins`), the Deskbar link and the snapshot folder, but not the
+  cache in `~/config/settings/RTelevision`.
 - The copied VLC plugin tree has a stale `plugins.dat` (copying changes mtimes),
   so libVLC rescans its plugins at start-up.
 - Some streams (ABC among them) carry damaged transport streams; decoders report

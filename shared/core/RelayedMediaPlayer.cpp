@@ -56,8 +56,8 @@ public:
             const std::string url = relay_->open(channel, cancelled, &relayed);
             if (cancelled()) return;  // whoever cancelled also closes the relay
             Channel target = channel;
+            target.url = url;  // the relay's address, or the channel's resolved one
             if (relayed) {
-                target.url = url;
                 // Tells the backend it is reading from the relay (see its play()).
                 target.options.emplace_back("rtv-relay", "1");
             }

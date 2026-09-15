@@ -177,7 +177,9 @@ QEMU(hvf, `-cpu host`)에서 도는 Haiku R1~beta6 arm64(hrev99002)에서 빌드
 6. 접힘 상태는 **항목을 만들 때** 정해야 한다. 다 넣고 나서 `Expand()`를 호출하면
    접힌 부모 밑의 행이 보이는 목록의 엉뚱한 위치로 들어간다.
 7. `~/config/apps`는 packagefs라 **읽기 전용**이다. 사용자 바이너리는
-   `~/config/non-packaged/apps`로 간다.
+   `~/config/non-packaged/apps/RTelevision/`로 간다. 런타임 로더는 바이너리 옆은
+   보지 않고 `<바이너리 디렉터리>/lib`만 뒤지므로, 함께 넣는 라이브러리는 `lib/`에
+   둔다. rpath가 없는 VLC 플러그인이 libdvbpsi 같은 의존 라이브러리를 찾는 유일한 길이다.
 8. 최소 이미지에는 `make`·`grep`·`sed`·`awk`·`tar`·`which`가 **없다.**
    `install.sh`가 make 없이도 빌드하도록 짠 이유다.
 9. 국기 이모지는 Haiku 기본 폰트에 글리프가 없어 `🇰🇷` 대신 `KR`이 네모 두 칸으로

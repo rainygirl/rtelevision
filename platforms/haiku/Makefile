@@ -3,7 +3,7 @@
 #   make deps       vendor libVLC into third_party (installs nothing)
 #   make            build build/RTelevision
 #   make cli        build the headless tool only (no BeAPI needed)
-#   make install    install into ~/config/apps and the Deskbar
+#   make install    install into ~/config/non-packaged/apps/RTelevision and the Deskbar
 #   make clean
 #
 # Packages required:  pkgman install gcc make curl_devel haiku_devel
@@ -14,7 +14,8 @@ include $(SHARED_DIR)/common.mk
 
 APP    := RTelevision
 BUILD  := build
-UI_SRC := main.cpp MainWindow.cpp VideoView.cpp Icons.cpp AudioOutput.cpp ResolverGuard.cpp
+UI_SRC := main.cpp MainWindow.cpp VideoView.cpp Icons.cpp AudioOutput.cpp ResolverGuard.cpp \
+          SocketGuard.cpp
 
 SEED        := ../../resources/seed-playlist.m3u
 RDEF        := $(APP).rdef
@@ -22,8 +23,12 @@ HVIF        := ../../resources/icon/$(APP).hvif
 ELF_TYPE    := application/x-vnd.be-elfexecutable
 set_attrs    = resattr -o $(1) $(BUILD)/$(APP).rsrc && settype -t $(ELF_TYPE) $(1)
 NOTICES     := ../../LICENSE ../../THIRD-PARTY-NOTICES.md
-# ~/config/apps is packagefs and read-only; user binaries go here.
-INSTALL_DIR ?= $(HOME)/config/non-packaged/apps
+# ~/config/apps is packagefs and read-only; user binaries go here. The app gets
+# a directory of its own: the runtime loader looks for a program's libraries in
+# <its directory>/lib, and that is the only place the VLC plugins (which have no
+# rpath) find the bundled libraries they need, libdvbpsi for the TS demuxer
+# among them.
+INSTALL_DIR ?= $(HOME)/config/non-packaged/apps/$(APP)
 DATA_DIR    ?= $(HOME)/config/non-packaged/data/RTelevision
 
 # MEDIA BACKEND
@@ -46,7 +51,7 @@ ifneq ($(wildcard $(VLC_VENDOR)/include/vlc/vlc.h),)
   # on its own, so the bundled libvlc is found through an rpath instead.
   # libvlccore is named explicitly so it becomes a direct dependency of the
   # binary: an rpath does not carry over to a dependency's own dependencies.
-  VLC_LDLIBS := -L$(VLC_VENDOR)/lib -lvlc -lvlccore -Wl,-rpath,'$$ORIGIN' 
+  VLC_LDLIBS := -L$(VLC_VENDOR)/lib -lvlc -lvlccore -Wl,-rpath,'$$ORIGIN/lib' 
 else ifneq ($(wildcard $(VLC_HEADER)),)
   VLC ?= 1
   VLC_CFLAGS :=
@@ -56,7 +61,7 @@ else ifneq ($(wildcard $(FF_VENDOR)/include/libavcodec/avcodec.h),)
   FFMPEG ?= 1
   VLC_CFLAGS := -I$(FF_VENDOR)/include
   VLC_LDLIBS := -L$(FF_VENDOR)/lib -lavformat -lavcodec -lswscale -lswresample -lavutil \
-                -Wl,-rpath,'$$ORIGIN'
+                -Wl,-rpath,'$$ORIGIN/lib'
 else
   VLC ?= 0
   VLC_CFLAGS :=
@@ -127,9 +132,10 @@ $(BUILD)/$(APP): $(OBJ) $(BUILD)/$(APP).rsrc
 	xres -o $@ $(BUILD)/$(APP).rsrc
 	$(call set_attrs,$@)
 ifneq ($(wildcard $(VLC_VENDOR)/plugins),)
-	@# Haiku's runtime loader searches the binary's own directory, so the
-	@# bundled libraries go right next to it - no rpath needed.
-	cp -a $(VLC_VENDOR)/lib/*.so* $(BUILD)/ 2>/dev/null || true
+	@# The build directory mirrors the installed layout: libraries in lib/,
+	@# where both the rpath and the loader's own search find them.
+	mkdir -p $(BUILD)/lib
+	cp -a $(VLC_VENDOR)/lib/*.so* $(BUILD)/lib/ 2>/dev/null || true
 	rm -rf $(BUILD)/vlc
 	mkdir -p $(BUILD)/vlc
 	cp -a $(VLC_VENDOR)/plugins $(BUILD)/vlc/plugins
@@ -147,6 +153,13 @@ $(BUILD)/rtv-cli: $(CORE_SRC) $(CORE_SRC_NULL) $(HTTP_SRC) $(CLI_SRC)
 	$(CXX) $(CXXFLAGS) $^ -lbe -lnetwork $(HTTP_LIBS) -o $@
 
 install: $(BUILD)/$(APP)
+	@# Earlier versions put the binary and the libraries straight into apps/.
+	@if [ -f "$(dir $(INSTALL_DIR))$(APP)" ]; then \
+	    echo "removing the old flat installation in $(dir $(INSTALL_DIR))"; \
+	    rm -rf "$(dir $(INSTALL_DIR))$(APP)" "$(dir $(INSTALL_DIR))vlc" \
+	           "$(dir $(INSTALL_DIR))seed-playlist.m3u"; \
+	    for lib in $(notdir $(wildcard $(BUILD)/lib/*.so*)); do rm -f "$(dir $(INSTALL_DIR))$$lib"; done; \
+	fi
 	mkdir -p "$(INSTALL_DIR)" "$(DATA_DIR)"
 	cp $(BUILD)/$(APP) "$(INSTALL_DIR)/$(APP)"
 	$(call set_attrs,"$(INSTALL_DIR)/$(APP)")
@@ -156,11 +169,13 @@ install: $(BUILD)/$(APP)
 	rm -rf "$(DATA_DIR)/licenses"
 	cp -a ../../licenses "$(DATA_DIR)/licenses"
 ifeq ($(FFMPEG),1)
-	cp -a $(FF_VENDOR)/lib/*.so* "$(INSTALL_DIR)/" 2>/dev/null || true
+	mkdir -p "$(INSTALL_DIR)/lib"
+	cp -a $(FF_VENDOR)/lib/*.so* "$(INSTALL_DIR)/lib/" 2>/dev/null || true
 	cp $(SEED) "$(INSTALL_DIR)/seed-playlist.m3u"
 endif
 ifneq ($(wildcard $(VLC_VENDOR)/plugins),)
-	cp -a $(VLC_VENDOR)/lib/*.so* "$(INSTALL_DIR)/" 2>/dev/null || true
+	mkdir -p "$(INSTALL_DIR)/lib"
+	cp -a $(VLC_VENDOR)/lib/*.so* "$(INSTALL_DIR)/lib/" 2>/dev/null || true
 	rm -rf "$(INSTALL_DIR)/vlc"
 	mkdir -p "$(INSTALL_DIR)/vlc"
 	cp -a $(VLC_VENDOR)/plugins "$(INSTALL_DIR)/vlc/plugins"
@@ -168,14 +183,13 @@ ifneq ($(wildcard $(VLC_VENDOR)/plugins),)
 endif
 	@# Deskbar picks up anything linked into the applications menu directory.
 	mkdir -p "$(HOME)/config/settings/deskbar/menu/Applications"
-	ln -sf "$(INSTALL_DIR)/$(APP)" \
+	ln -sfn "$(INSTALL_DIR)/$(APP)" \
 	       "$(HOME)/config/settings/deskbar/menu/Applications/$(APP)"
 	@echo "installed: $(INSTALL_DIR)/$(APP)"
 
 uninstall:
-	rm -f "$(INSTALL_DIR)/$(APP)" \
-	      "$(HOME)/config/settings/deskbar/menu/Applications/$(APP)"
-	rm -rf "$(DATA_DIR)"
+	rm -rf "$(INSTALL_DIR)" "$(HOME)/config/settings/deskbar/menu/Applications/$(APP)" \
+	       "$(DATA_DIR)"
 
 clean:
 	rm -rf $(BUILD)

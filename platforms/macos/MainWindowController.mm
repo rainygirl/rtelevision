@@ -99,6 +99,11 @@
     const CGFloat divider = self.dividerThickness;
     if (total <= 0 || height <= 0) return;
 
+    if (sidebar.hidden) {  // full screen: video only
+        pane.frame = NSMakeRect(0, 0, total, height);
+        return;
+    }
+
     CGFloat width = NSWidth(sidebar.frame);
     if (width <= 0) width = 300;
     const CGFloat maxWidth = MAX(220, total - divider - 400);
@@ -142,13 +147,18 @@
 #pragma mark - Window controller
 
 @interface MainWindowController () <NSOutlineViewDataSource, NSOutlineViewDelegate,
-                                    NSSplitViewDelegate, NSSearchFieldDelegate>
+                                    NSSplitViewDelegate, NSSearchFieldDelegate,
+                                    NSWindowDelegate>
 @end
 
 @implementation MainWindowController {
     std::shared_ptr<tv::AppController> _controller;
 
     TVSplitView* _splitView;
+    NSView* _sidebar;
+    NSView* _controlBar;
+    NSLayoutConstraint* _controlBarHeight;
+    CGFloat _sidebarWidthBeforeFullScreen;
     NSSearchField* _searchField;
     NSSegmentedControl* _groupingControl;
     TVOutlineView* _outlineView;
@@ -187,6 +197,7 @@
 
     self = [super initWithWindow:window];
     if (!self) return nil;
+    window.delegate = self;
 
     _controller = std::move(controller);
     _roots = [NSMutableArray array];
@@ -221,7 +232,8 @@
         [_splitView.bottomAnchor constraintEqualToAnchor:content.bottomAnchor],
     ]];
 
-    [_splitView addSubview:[self buildSidebar]];
+    _sidebar = [self buildSidebar];
+    [_splitView addSubview:_sidebar];
     [_splitView addSubview:[self buildPlayerPane]];
     [_splitView setPosition:300 ofDividerAtIndex:0];
 }
@@ -318,6 +330,7 @@
     NSView* bar = [[NSView alloc] initWithFrame:NSZeroRect];
     bar.translatesAutoresizingMaskIntoConstraints = NO;
     [pane addSubview:bar];
+    _controlBar = bar;
 
     _playPauseButton = [self iconButton:@"play.fill"
                                  action:@selector(togglePlayPause:)
@@ -376,7 +389,7 @@
         [bar.leadingAnchor constraintEqualToAnchor:pane.leadingAnchor],
         [bar.trailingAnchor constraintEqualToAnchor:pane.trailingAnchor],
         [bar.bottomAnchor constraintEqualToAnchor:pane.bottomAnchor],
-        [bar.heightAnchor constraintEqualToConstant:54],
+        (_controlBarHeight = [bar.heightAnchor constraintEqualToConstant:54]),
 
         [buttons.leadingAnchor constraintEqualToAnchor:bar.leadingAnchor constant:12],
         [buttons.centerYAnchor constraintEqualToAnchor:bar.centerYAnchor],
@@ -755,6 +768,26 @@
 
 - (void)toggleFullScreen:(id)sender {
     [self.window toggleFullScreen:sender];
+}
+
+// Full screen shows the video alone: the sidebar and the control bar go away
+// and come back with the window. A hidden split view subview counts as
+// collapsed, so no divider is drawn either.
+- (void)windowWillEnterFullScreen:(NSNotification*)notification {
+    _sidebarWidthBeforeFullScreen = NSWidth(_sidebar.frame);
+    _sidebar.hidden = YES;
+    _controlBar.hidden = YES;
+    _controlBarHeight.constant = 0;
+    _splitView.needsLayout = YES;
+}
+
+- (void)windowWillExitFullScreen:(NSNotification*)notification {
+    _sidebar.hidden = NO;
+    _controlBar.hidden = NO;
+    _controlBarHeight.constant = 54;
+    if (_sidebarWidthBeforeFullScreen > 0)
+        [_splitView setPosition:_sidebarWidthBeforeFullScreen ofDividerAtIndex:0];
+    _splitView.needsLayout = YES;
 }
 
 - (void)volumeChanged:(id)sender {

@@ -41,6 +41,20 @@
     return YES;
 }
 
+// Being activated (Command-Tab, Dock) is not the same as having the window in
+// front: when the switch comes from another app's full screen Space, the
+// system activates this app but leaves the Space as it is, and the window
+// stays out of sight. Ordering the window front makes the Space follow it.
+- (void)applicationDidBecomeActive:(NSNotification*)notification {
+    NSWindow* window = _mainWindow.window;
+    if (window != nil && !window.miniaturized) [window makeKeyAndOrderFront:nil];
+}
+
+- (BOOL)applicationShouldHandleReopen:(NSApplication*)sender hasVisibleWindows:(BOOL)flag {
+    if (!flag) [_mainWindow showWindow:nil];
+    return YES;
+}
+
 - (void)showFatalAlert:(NSString*)message info:(NSString*)info {
     NSAlert* alert = [[NSAlert alloc] init];
     alert.messageText = message;

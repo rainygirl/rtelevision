@@ -62,6 +62,8 @@ private:
     ChannelItem* SelectedChannel() const;
 
     std::shared_ptr<AppController> fController;
+    BView* fSidebar;
+    BView* fControlBar;
     BOutlineListView* fChannelList;
     BTextControl* fSearchField;
     BRadioButton* fCategoryButton;

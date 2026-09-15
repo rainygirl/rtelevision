@@ -101,14 +101,9 @@ cd platforms/linux && make uninstall
 Haiku:
 
 ```sh
-rm -f ~/config/non-packaged/apps/RTelevision ~/config/settings/deskbar/menu/Applications/RTelevision
+rm -rf ~/config/non-packaged/apps/RTelevision ~/config/settings/deskbar/menu/Applications/RTelevision
 rm -rf ~/config/non-packaged/data/RTelevision ~/config/settings/RTelevision
-rm -rf ~/config/non-packaged/apps/vlc ~/config/non-packaged/apps/libvlc*.so* \
-       ~/config/non-packaged/apps/libav*.so* ~/config/non-packaged/apps/libsw*.so*
 ```
-
-The last Haiku line removes the media libraries R Television copied next to
-itself; skip it if another program of yours uses them.
 
 The second macOS line and the Haiku `settings` folder hold the channel list
 cache and your favorites.
