@@ -14,7 +14,7 @@ include $(SHARED_DIR)/common.mk
 
 APP    := RTelevision
 BUILD  := build
-UI_SRC := main.cpp MainWindow.cpp VideoView.cpp Icons.cpp AudioOutput.cpp
+UI_SRC := main.cpp MainWindow.cpp VideoView.cpp Icons.cpp AudioOutput.cpp ResolverGuard.cpp
 
 SEED        := ../../resources/seed-playlist.m3u
 RDEF        := $(APP).rdef

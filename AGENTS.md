@@ -264,6 +264,10 @@ The core without a window; the first thing to bring up on a new platform.
   rpath does not carry over to a dependency's dependencies.
 - Haiku without a sound device: `media_addon_server` may quit; VLC builds can
   run with `RTV_VLC_ARGS="--no-audio"`.
+- Haiku's `nsdispatch()` crashes after a thread is cancelled inside a name
+  lookup, which libVLC does when a stream is stopped while still connecting.
+  `platforms/haiku/ResolverGuard.cpp` interposes the resolver functions and
+  runs them with cancellation disabled.
 - Haiku `make uninstall` removes the binary, the Deskbar link and the snapshot
   folder, but not the bundled `.so` files, `vlc/plugins` or the cache in
   `~/config/settings/RTelevision`.
