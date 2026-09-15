@@ -17,6 +17,10 @@ BUILD  := build
 UI_SRC := main.cpp MainWindow.cpp VideoView.cpp Icons.cpp AudioOutput.cpp
 
 SEED        := ../../resources/seed-playlist.m3u
+RDEF        := $(APP).rdef
+HVIF        := ../../resources/icon/$(APP).hvif
+ELF_TYPE    := application/x-vnd.be-elfexecutable
+set_attrs    = resattr -o $(1) $(BUILD)/$(APP).rsrc && settype -t $(ELF_TYPE) $(1)
 NOTICES     := ../../LICENSE ../../THIRD-PARTY-NOTICES.md
 # ~/config/apps is packagefs and read-only; user binaries go here.
 INSTALL_DIR ?= $(HOME)/config/non-packaged/apps
@@ -109,9 +113,19 @@ $(BUILD)/obj/%.o: %.cpp
 	@mkdir -p $(dir $@)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-$(BUILD)/$(APP): $(OBJ)
+# Signature, version and icon: compiled from the .rdef and merged into the
+# binary, then written to the attributes Tracker and the Deskbar read. resattr
+# does that directly; mimeset would too, but only where the registrar sniffs
+# the ELF correctly, which some development builds do not.
+$(BUILD)/$(APP).rsrc: $(RDEF) $(HVIF)
+	@mkdir -p $(BUILD)
+	rc -o $@ $(RDEF)
+
+$(BUILD)/$(APP): $(OBJ) $(BUILD)/$(APP).rsrc
 	@mkdir -p $(BUILD)
 	$(CXX) $(OBJ) $(LIBS) -o $@
+	xres -o $@ $(BUILD)/$(APP).rsrc
+	$(call set_attrs,$@)
 ifneq ($(wildcard $(VLC_VENDOR)/plugins),)
 	@# Haiku's runtime loader searches the binary's own directory, so the
 	@# bundled libraries go right next to it - no rpath needed.
@@ -135,6 +149,7 @@ $(BUILD)/rtv-cli: $(CORE_SRC) $(CORE_SRC_NULL) $(HTTP_SRC) $(CLI_SRC)
 install: $(BUILD)/$(APP)
 	mkdir -p "$(INSTALL_DIR)" "$(DATA_DIR)"
 	cp $(BUILD)/$(APP) "$(INSTALL_DIR)/$(APP)"
+	$(call set_attrs,"$(INSTALL_DIR)/$(APP)")
 	cp $(SEED) "$(DATA_DIR)/seed-playlist.m3u"
 	@# The bundled libVLC/FFmpeg are LGPL/GPL: their notices go with them.
 	cp $(NOTICES) "$(DATA_DIR)/"

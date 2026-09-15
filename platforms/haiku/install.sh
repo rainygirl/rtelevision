@@ -21,6 +21,14 @@ DESKBAR_DIR=$HOME/config/settings/deskbar/menu/Applications
 
 have() { command -v "$1" >/dev/null 2>&1; }
 
+# Copies the resources (signature, version, icon) into the attributes Tracker
+# and the Deskbar read. resattr does it directly, so it also works where the
+# registrar fails to sniff the ELF and mimeset would leave nothing behind.
+set_attrs() {
+    resattr -o "$1" "$BUILD/$APP.rsrc"
+    settype -t application/x-vnd.be-elfexecutable "$1"
+}
+
 # ---------------------------------------------------------------- dependencies
 missing=""
 have c++ || have g++ || missing="$missing gcc"
@@ -108,6 +116,10 @@ else
     done
     echo "  LD  $BUILD/$APP"
     $CXX $OBJS $LIBS -o "$BUILD/$APP"
+    # signature, version and icon
+    rc -o "$BUILD/$APP.rsrc" "$APP.rdef"
+    xres -o "$BUILD/$APP" "$BUILD/$APP.rsrc"
+    set_attrs "$BUILD/$APP"
 fi
 
 [ "${1:-}" = "--build" ] && exit 0
@@ -115,6 +127,7 @@ fi
 # --------------------------------------------------------------------- install
 mkdir -p "$APPS_DIR" "$DATA_DIR" "$DESKBAR_DIR"
 cp "$BUILD/$APP" "$APPS_DIR/$APP"
+set_attrs "$APPS_DIR/$APP"
 cp ../../resources/seed-playlist.m3u "$DATA_DIR/seed-playlist.m3u"
 # The bundled libVLC/FFmpeg are LGPL/GPL: their notices go with them.
 cp ../../LICENSE ../../THIRD-PARTY-NOTICES.md "$DATA_DIR/"
