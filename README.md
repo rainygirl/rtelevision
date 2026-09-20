@@ -12,10 +12,13 @@ English · [Italiano](README.it.md) · [日本語](README.ja.md) · [한국어](
 |---|---|---|
 | macOS 11 or newer, Apple Silicon or Intel | download the app | nothing |
 | Linux x86_64: Debian, Ubuntu, Linux Mint | build it with one command | an internet connection, and your password once |
+| Linux x86_64: Fedora | build it with one command | the same, plus VLC from RPM Fusion |
 | Haiku x86_64 | build it with one command | an internet connection |
 | Haiku arm64 | build it with one command | FFmpeg prepared first (see [Haiku](#haiku)) |
 
-VLC does not need to be installed anywhere: R Television brings its own.
+On macOS, Haiku and Debian-based Linux, VLC does not need to be installed
+anywhere: R Television brings its own. Other Linux distributions link the one
+they ship, because the bundling step can only unpack `.deb` packages.
 
 ## Install
 
@@ -58,10 +61,24 @@ From then on it opens like any other app.
 
    The script installs whatever is missing among the compiler and the GTK and
    curl development packages (it may ask for your password), then builds
-   R Television and installs it into your home folder.
+   R Television and installs it into your home folder. It uses `apt-get` or
+   `dnf`, whichever the system has.
+
+   On Fedora, VLC lives in RPM Fusion rather than the stock repositories. If
+   `vlc-devel` cannot be found, enable it and run the script again:
+
+   ```sh
+   sudo dnf install -y \
+     "https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm"
+   ```
 3. Start **R Television** from the applications menu, or run `r-television`.
 
-Tested on Linux Mint 20.3 and Ubuntu 20.04.
+Tested on Linux Mint 20.3, Ubuntu 20.04 and Fedora 41.
+
+On a Wayland session the app asks GDK for its X11 backend and runs through
+XWayland, because libVLC 3 can only embed video into an X11 window. Set
+`GDK_BACKEND` yourself to override that; video then opens in a window of its
+own.
 
 ### Haiku
 

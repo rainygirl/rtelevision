@@ -57,6 +57,17 @@ void reExecWithBundleLibraryPath(char** argv) {
     // Falling through only costs the extra plugins; carry on.
 }
 
+// libVLC 3 can only embed video into an X11 window (libvlc_media_player_set_xwindow);
+// it has no Wayland counterpart. On a Wayland session GTK would otherwise choose its
+// Wayland backend, MainWindow::OnVideoRealized would find no X11 window to hand over,
+// and VLC would open a video window of its own - which also takes full screen with it.
+// Asking GDK to try X11 first keeps the picture inside the app, through XWayland when
+// the session is Wayland, and still falls back to Wayland where there is no X server.
+void preferX11ForVideoEmbedding() {
+    if (std::getenv("GDK_BACKEND") != nullptr) return;  // let the user override
+    gdk_set_allowed_backends("x11,wayland,*");
+}
+
 tv::AppPaths resolvePaths() {
     const std::string exeDir = executableDir();
 
@@ -86,6 +97,7 @@ tv::AppPaths resolvePaths() {
 
 int main(int argc, char** argv) {
     reExecWithBundleLibraryPath(argv);
+    preferX11ForVideoEmbedding();
     gtk_init(&argc, &argv);
     tv::setLanguage(tv::detectLanguage());
 

@@ -25,7 +25,10 @@ if [ -f "$DEST/lib/libvlc.so" ] && [ -d "$DEST/plugins" ]; then
 fi
 
 command -v apt-get >/dev/null 2>&1 || {
-    echo "this script expects a Debian/Ubuntu system (apt-get)" >&2
+    echo "this script expects a Debian/Ubuntu system (apt-get)." >&2
+    echo "Elsewhere, link the distribution's own libVLC instead:" >&2
+    echo "  make VLC_SYSTEM=1 && make VLC_SYSTEM=1 install" >&2
+    echo "install.sh already does that when apt-get is absent." >&2
     exit 1
 }
 
