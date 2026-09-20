@@ -59,6 +59,8 @@ private:
     std::shared_ptr<AppController> controller_;
 
     GtkWidget* window_ = nullptr;
+    GtkWidget* sidebar_ = nullptr;
+    GtkWidget* controlBar_ = nullptr;
     GtkWidget* searchEntry_ = nullptr;
     GtkWidget* categoryButton_ = nullptr;
     GtkWidget* countryButton_ = nullptr;

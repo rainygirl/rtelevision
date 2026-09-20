@@ -100,7 +100,8 @@ void MainWindow::BuildInterface() {
     g_signal_connect(window_, "key-press-event", G_CALLBACK(&MainWindow::OnKeyPress), this);
 
     GtkWidget* paned = gtk_paned_new(GTK_ORIENTATION_HORIZONTAL);
-    gtk_paned_pack1(GTK_PANED(paned), BuildSidebar(), FALSE, FALSE);
+    sidebar_ = BuildSidebar();
+    gtk_paned_pack1(GTK_PANED(paned), sidebar_, FALSE, FALSE);
     gtk_paned_pack2(GTK_PANED(paned), BuildPlayerPane(), TRUE, FALSE);
     gtk_paned_set_position(GTK_PANED(paned), 300);
     gtk_container_add(GTK_CONTAINER(window_), paned);
@@ -242,6 +243,7 @@ GtkWidget* MainWindow::BuildPlayerPane() {
     gtk_box_pack_start(GTK_BOX(bar), volumeScale_, FALSE, FALSE, 0);
     gtk_box_pack_start(GTK_BOX(bar), fullScreenButton, FALSE, FALSE, 0);
 
+    controlBar_ = bar;
     gtk_box_pack_start(GTK_BOX(box), bar, FALSE, FALSE, 0);
     return box;
 }
@@ -425,9 +427,17 @@ void MainWindow::ToggleMute() {
 }
 
 void MainWindow::ToggleFullScreen() {
-    if (fullScreen_) gtk_window_unfullscreen(GTK_WINDOW(window_));
-    else gtk_window_fullscreen(GTK_WINDOW(window_));
     fullScreen_ = !fullScreen_;
+
+    // Full screen means the picture and nothing else. Left in place, the channel
+    // list and the transport bar keep their space and letterbox the video into a
+    // corner of the screen. GtkPaned drops its handle once a child is hidden, so
+    // the video pane ends up owning every pixel.
+    if (sidebar_ != nullptr) gtk_widget_set_visible(sidebar_, !fullScreen_);
+    if (controlBar_ != nullptr) gtk_widget_set_visible(controlBar_, !fullScreen_);
+
+    if (fullScreen_) gtk_window_fullscreen(GTK_WINDOW(window_));
+    else gtk_window_unfullscreen(GTK_WINDOW(window_));
 }
 
 void MainWindow::ToggleFavorite() {
