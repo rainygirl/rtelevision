@@ -24,6 +24,7 @@
 #include <utility>
 #include <vector>
 
+#include "Aes128.h"
 #include "StringUtil.h"
 
 namespace tv {
@@ -56,6 +57,47 @@ void logf(bool enabled, const char* format, ...) {
     std::vfprintf(stderr, format, args);
     std::fputc('\n', stderr);
     va_end(args);
+}
+
+// Attribute lists in HLS tags are NAME=value or NAME="value", comma separated.
+std::string attributeValue(const std::string& tag, const char* name) {
+    const std::string key = std::string(name) + "=";
+    size_t at = tag.find(key);
+    while (at != std::string::npos) {
+        const char before = at == 0 ? ':' : tag[at - 1];
+        if (before == ':' || before == ',') break;  // not the tail of another name
+        at = tag.find(key, at + 1);
+    }
+    if (at == std::string::npos) return std::string();
+    const size_t from = at + key.size();
+    if (from < tag.size() && tag[from] == '"') {
+        const size_t end = tag.find('"', from + 1);
+        return end == std::string::npos ? std::string() : tag.substr(from + 1, end - from - 1);
+    }
+    const size_t end = tag.find(',', from);
+    return tag.substr(from, end == std::string::npos ? end : end - from);
+}
+
+std::string hexToBytes(const std::string& text) {
+    std::string hex = startsWith(toLower(text), "0x") ? text.substr(2) : text;
+    if (hex.size() != 32) return std::string();
+    std::string out;
+    for (size_t i = 0; i + 1 < hex.size(); i += 2) {
+        const std::string pair = hex.substr(i, 2);
+        char* end = nullptr;
+        const long value = std::strtol(pair.c_str(), &end, 16);
+        if (end != pair.c_str() + 2) return std::string();
+        out.push_back(static_cast<char>(value));
+    }
+    return out;
+}
+
+// A key tag with no IV means the segment's media sequence number, as a 16-byte
+// big-endian value.
+std::string ivFromSequence(uint64_t sequence) {
+    std::string iv(16, '\0');
+    for (int i = 0; i < 8; ++i) iv[15 - i] = static_cast<char>((sequence >> (8 * i)) & 0xff);
+    return iv;
 }
 
 std::string optionValue(const Channel& channel, const char* key) {
@@ -124,7 +166,21 @@ struct Playlist {
     double targetDuration = 10;
     std::vector<SegmentInfo> segments;
     std::vector<std::string> variants;
+    std::vector<long> variantBandwidth;  // parallel to `variants`, 0 when absent
 };
+
+// The rendition to play when a player cannot choose for itself: the smallest,
+// which is also all that the machines needing this can decode.
+size_t smallestVariant(const Playlist& playlist) {
+    size_t best = 0;
+    for (size_t i = 1; i < playlist.variants.size(); ++i) {
+        const long bandwidth = i < playlist.variantBandwidth.size() ? playlist.variantBandwidth[i] : 0;
+        const long bestBandwidth =
+            best < playlist.variantBandwidth.size() ? playlist.variantBandwidth[best] : 0;
+        if (bandwidth > 0 && (bestBandwidth == 0 || bandwidth < bestBandwidth)) best = i;
+    }
+    return best;
+}
 
 Playlist parsePlaylist(const std::string& text, const std::string& base) {
     Playlist playlist;
@@ -132,6 +188,7 @@ Playlist parsePlaylist(const std::string& text, const std::string& base) {
     double duration = -1;
     bool discontinuity = false;
     bool variantNext = false;
+    long variantBandwidth = 0;
     bool sawHeader = false;
     std::string keyTag;
     std::string mapTag;
@@ -154,6 +211,10 @@ Playlist parsePlaylist(const std::string& text, const std::string& base) {
             if (startsWith(line, "#EXT-X-STREAM-INF")) {
                 playlist.master = true;
                 variantNext = true;
+                const size_t key = line.find("BANDWIDTH=");
+                variantBandwidth = key == std::string::npos
+                                       ? 0
+                                       : std::strtol(line.c_str() + key + 10, nullptr, 10);
             } else if (startsWith(line, "#EXT-X-MEDIA:")) {
                 if (line.find("URI=\"") != std::string::npos) playlist.alternateRenditions = true;
             } else if (startsWith(line, "#EXT-X-TARGETDURATION:")) {
@@ -180,6 +241,7 @@ Playlist parsePlaylist(const std::string& text, const std::string& base) {
 
         if (variantNext) {
             playlist.variants.push_back(resolveUrl(base, line));
+            playlist.variantBandwidth.push_back(variantBandwidth);
             variantNext = false;
         } else if (duration >= 0) {
             SegmentInfo segment;
@@ -207,14 +269,36 @@ std::string newSessionId() {
     return id;
 }
 
-void sendAll(int fd, const char* data, size_t size) {
+// False once the player has hung up, which is how the tuner learns to stop.
+bool sendAll(int fd, const char* data, size_t size) {
     while (size > 0) {
         const ssize_t sent = ::send(fd, data, size, 0);
         if (sent < 0 && errno == EINTR) continue;
-        if (sent <= 0) return;
+        if (sent <= 0) return false;
         data += sent;
         size -= static_cast<size_t>(sent);
     }
+    return true;
+}
+
+// Percent-decoding, for the channel URL in a /tune request.
+std::string urlDecode(const std::string& text) {
+    std::string out;
+    out.reserve(text.size());
+    for (size_t i = 0; i < text.size(); ++i) {
+        if (text[i] == '%' && i + 2 < text.size()) {
+            const std::string hex = text.substr(i + 1, 2);
+            char* end = nullptr;
+            const long value = std::strtol(hex.c_str(), &end, 16);
+            if (end == hex.c_str() + 2) {
+                out.push_back(static_cast<char>(value));
+                i += 2;
+                continue;
+            }
+        }
+        out.push_back(text[i] == '+' ? ' ' : text[i]);
+    }
+    return out;
 }
 
 }  // namespace
@@ -243,6 +327,11 @@ public:
           progress_(std::move(progress)) {}
 
     const std::string& id() const { return id_; }
+
+    // Normally the player decrypts AES-128 segments itself, so the relay just
+    // passes the key tag along. A player fed plain MPEG-TS never sees the tag,
+    // so for those the relay has to do it. Set before start().
+    void setDecrypt(bool on) { decrypt_ = on; }
 
     void start(const Playlist& playlist) {
         {
@@ -309,6 +398,75 @@ public:
         trimLocked();
         changed_.notify_all();
         return reply;
+    }
+
+    // ----- players that cannot read HLS
+    //
+    // The same segments, written out back to back as one MPEG-TS body instead
+    // of being listed in a playlist. prepareStream() waits for the start buffer
+    // and decides whether the stream can be served this way at all, so the
+    // caller can answer with an error before it commits to a 200.
+
+    bool prepareStream(std::string* why) {
+        std::unique_lock<std::mutex> lock(mutex_);
+        const double since = now();
+        while (!stop_ && failure_.empty() && !drainedLocked()) {
+            if (leadSecondsLocked() >= settings_.startBufferSeconds) break;
+            if (!ready_.empty() && throughputLocked() >= kFastRatio) break;
+            if (!ready_.empty() && now() - since >= settings_.maxStartWaitSeconds) break;
+            changed_.wait_for(lock, std::chrono::milliseconds(250));
+        }
+        if (ready_.empty()) {
+            *why = failure_.empty() ? "nothing arrived from the server" : failure_;
+            return false;
+        }
+        if (!decrypt_ && !ready_.front().keyTag.empty()) {
+            *why = "AES-128 encrypted; the relay would have to decrypt it first";
+            return false;
+        }
+        if (!ready_.front().mapTag.empty()) {
+            *why = "fragmented MP4, which cannot be concatenated as MPEG-TS";
+            return false;
+        }
+        released_ = true;
+        lastRequestAt_ = now();
+        return true;
+    }
+
+    // Blocks until the player hangs up or the session ends. Marking each
+    // segment as it goes out lets the usual trimming follow the write position,
+    // so nothing accumulates for a player that keeps up.
+    void streamTo(int fd) {
+        uint64_t next = 0;
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+            next = readyBase_;
+        }
+        for (;;) {
+            std::shared_ptr<const std::string> body;
+            {
+                std::unique_lock<std::mutex> lock(mutex_);
+                for (;;) {
+                    if (stop_) return;
+                    if (next < readyBase_) next = readyBase_;  // trimmed away; skip the gap
+                    if (next - readyBase_ < ready_.size()) break;
+                    if (drainedLocked()) return;
+                    changed_.wait_for(lock, std::chrono::milliseconds(250));
+                }
+                body = ready_[static_cast<size_t>(next - readyBase_)].data;
+                highestRequested_ = next;
+                requestedAny_ = true;
+                lastRequestAt_ = now();
+                trimLocked();
+                changed_.notify_all();
+            }
+            // A player that closed mid-segment would otherwise only be noticed
+            // at the next write, a whole segment later.
+            char probe = 0;
+            if (::recv(fd, &probe, 1, MSG_PEEK | MSG_DONTWAIT) == 0) return;
+            if (!sendAll(fd, body->data(), body->size())) return;
+            ++next;
+        }
     }
 
 private:
@@ -478,7 +636,10 @@ private:
             known_.clear();
             nextSequence_ = playlist.segments[count - std::min(count, kStartBack)].sequence;
         }
-        for (const SegmentInfo& segment : playlist.segments) known_.emplace(segment.sequence, segment);
+        // insert rather than emplace: GCC 4.7, which builds the PowerPC port,
+        // has no emplace on the associative containers.
+        for (const SegmentInfo& segment : playlist.segments)
+            known_.insert(std::make_pair(segment.sequence, segment));
         known_.erase(known_.begin(), known_.lower_bound(first));
     }
 
@@ -567,7 +728,14 @@ private:
             std::string data;
             std::string detail;
             bool gone = false;
-            const bool ok = fetchSegment(segment, &data, &gone, &detail);
+            bool ok = fetchSegment(segment, &data, &gone, &detail);
+            if (ok && decrypt_ && !segment.keyTag.empty()) {
+                std::string why;
+                if (!decryptSegment(segment, &data, &why)) {
+                    ok = false;
+                    detail += ", " + why;
+                }
+            }
             const double wall = std::max(0.001, now() - started);
 
             bool retryLater = false;
@@ -614,6 +782,47 @@ private:
             }
         }
         threadExited();
+    }
+
+    // Turns an AES-128 segment into plain bytes. Keys are fetched once each and
+    // remembered: a stream usually rotates them slowly, if at all.
+    bool decryptSegment(const SegmentInfo& segment, std::string* data, std::string* why) {
+        const std::string method = attributeValue(segment.keyTag, "METHOD");
+        if (method.empty() || method == "NONE") return true;
+        if (method != "AES-128") {
+            *why = "key method " + method + " is not supported";
+            return false;
+        }
+        const std::string uri = attributeValue(segment.keyTag, "URI");
+        if (uri.empty()) {
+            *why = "key tag without a URI";
+            return false;
+        }
+
+        std::string key;
+        {
+            std::lock_guard<std::mutex> lock(keyMutex_);
+            const std::map<std::string, std::string>::const_iterator it = keys_.find(uri);
+            if (it != keys_.end()) key = it->second;
+        }
+        if (key.empty()) {
+            const HttpResponse response = http_->get(request(uri, 15));
+            if (!response.ok() || response.body.size() != 16) {
+                *why = "could not fetch the key";
+                return false;
+            }
+            key = response.body;
+            std::lock_guard<std::mutex> lock(keyMutex_);
+            keys_[uri] = key;
+        }
+
+        std::string iv = hexToBytes(attributeValue(segment.keyTag, "IV"));
+        if (iv.empty()) iv = ivFromSequence(segment.sequence);
+        if (!aes128CbcDecrypt(key, iv, *data)) {
+            *why = "decryption failed";
+            return false;
+        }
+        return true;
     }
 
     // Segments of one live stream come out much the same size, so the last
@@ -942,6 +1151,9 @@ private:
     bool released_ = false;
     double lastRequestAt_ = 0;
     std::deque<std::pair<double, double>> samples_;  // (video seconds, wall seconds)
+    bool decrypt_ = false;                           // set before start()
+    std::mutex keyMutex_;
+    std::map<std::string, std::string> keys_;        // key URI -> the 16 raw bytes
     int64_t lastSegmentBytes_ = 0;                   // downloader thread only
     int lastPercent_ = -1;
     double fetchingDuration_ = 0;                    // downloader thread only
@@ -1064,16 +1276,39 @@ private:
         const std::string method = line.substr(0, space1);
         const std::string target = line.substr(space1 + 1, space2 - space1 - 1);
 
+        std::shared_ptr<RelaySession> session;
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+            session = session_;
+        }
+
+        // The continuous MPEG-TS route, for a player with no HLS demuxer. It
+        // never returns until that player goes away.
+        const std::string path = target.substr(0, target.find_first_of("?#"));
+        if (session && (method == "GET" || method == "HEAD") &&
+            path == "/" + session->id() + "/stream.ts") {
+            std::string why;
+            if (!session->prepareStream(&why)) {
+                logf(verbose_, "stream.ts refused: %s", why.c_str());
+                const char* head =
+                    "HTTP/1.0 415 Unsupported Media Type\r\nContent-Length: 0\r\n"
+                    "Connection: close\r\n\r\n";
+                sendAll(fd, head, std::strlen(head));
+                return;
+            }
+            logf(verbose_, "serve %s %s -> continuous MPEG-TS", method.c_str(), target.c_str());
+            const char* head =
+                "HTTP/1.0 200 OK\r\nContent-Type: video/mp2t\r\nCache-Control: no-cache\r\n"
+                "Connection: close\r\n\r\n";
+            if (sendAll(fd, head, std::strlen(head)) && method == "GET") session->streamTo(fd);
+            return;
+        }
+
         RelayReply reply;
         if (method != "GET" && method != "HEAD") {
             reply.status = 405;
-        } else {
-            std::shared_ptr<RelaySession> session;
-            {
-                std::lock_guard<std::mutex> lock(mutex_);
-                session = session_;
-            }
-            if (session) reply = session->serve(target);
+        } else if (session) {
+            reply = session->serve(target);
         }
 
         const size_t length = reply.body ? reply.body->size() : 0;
@@ -1114,7 +1349,10 @@ RelaySettings RelaySettings::fromEnvironment() {
         settings.connections = std::max(1, std::min(16, std::atoi(value)));
     if (const char* value = std::getenv("RTV_RELAY_BUFFER"))
         settings.startBufferSeconds = std::max(0.0, std::atof(value));
+    settings.plainTransportStream = std::getenv("RTV_RELAY_TS") != nullptr;
     settings.verbose = std::getenv("RTV_VERBOSE") != nullptr;
+    if (settings.plainTransportStream && std::getenv("RTV_RELAY_BUFFER") == nullptr)
+        settings.startBufferSeconds = 6;
     return settings;
 }
 
@@ -1173,12 +1411,16 @@ std::string HlsRelay::open(const Channel& channel, const std::function<bool()>& 
     // has established it; the player is spared the redirect.
     const std::string directUrl = playlist.valid ? base : channel.url;
     if (playlist.valid && playlist.master) {
-        if (playlist.variants.size() != 1 || playlist.alternateRenditions) {
+        const bool adaptive = playlist.variants.size() != 1 || playlist.alternateRenditions;
+        // A player that cannot read HLS cannot pick a rendition either, so in
+        // plain-TS mode the relay chooses the smallest instead of declining.
+        if (adaptive && !settings_.plainTransportStream) {
             logf(settings_.verbose, "%s: adaptive (%zu variants), played directly",
                  channel.name.c_str(), playlist.variants.size());
             return directUrl;
         }
-        mediaUrl = playlist.variants.front();
+        if (playlist.variants.empty()) return directUrl;
+        mediaUrl = playlist.variants[settings_.plainTransportStream ? smallestVariant(playlist) : 0];
         playlist = fetch(mediaUrl, &base);
         if (cancelled()) return channel.url;
     }
@@ -1201,12 +1443,228 @@ std::string HlsRelay::open(const Channel& channel, const std::function<bool()>& 
 
     const std::string id = newSessionId();
     auto session = std::make_shared<RelaySession>(http_, settings_, id, mediaUrl, channel, progress_);
+    // A player being handed plain MPEG-TS never sees the key tag, so the relay
+    // has to decrypt for it.
+    session->setDecrypt(settings_.plainTransportStream);
     session->start(playlist);
     server_->setSession(session);
     if (relayed) *relayed = true;
-    logf(settings_.verbose, "%s: relaying %s as session %s", channel.name.c_str(), mediaUrl.c_str(),
-         id.c_str());
-    return "http://127.0.0.1:" + std::to_string(server_->port()) + "/" + id + "/index.m3u8";
+    logf(settings_.verbose, "%s: relaying %s as session %s%s", channel.name.c_str(),
+         mediaUrl.c_str(), id.c_str(),
+         settings_.plainTransportStream ? " (plain MPEG-TS)" : "");
+    const std::string address =
+        "http://127.0.0.1:" + std::to_string(server_->port()) + "/" + id + "/";
+    return address + (settings_.plainTransportStream ? "stream.ts" : "index.m3u8");
 }
+
+// ------------------------------------------------------------------ tuner
+
+class HlsTuner::Impl {
+public:
+    Impl(std::shared_ptr<HttpClient> http, RelaySettings settings)
+        : http_(std::move(http)), settings_(settings) {}
+
+    ~Impl() {
+        stop();
+        endSession();
+        if (listenFd_ >= 0) ::close(listenFd_);
+    }
+
+    bool start(int port, bool lan, std::string* error) {
+        // A player hanging up in the middle of a segment must not kill us.
+        std::signal(SIGPIPE, SIG_IGN);
+
+        listenFd_ = ::socket(AF_INET, SOCK_STREAM, 0);
+        if (listenFd_ < 0) {
+            *error = std::strerror(errno);
+            return false;
+        }
+        int yes = 1;
+        ::setsockopt(listenFd_, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof yes);
+        sockaddr_in address;
+        std::memset(&address, 0, sizeof address);
+        address.sin_family = AF_INET;
+        address.sin_addr.s_addr = htonl(lan ? INADDR_ANY : INADDR_LOOPBACK);
+        address.sin_port = htons(static_cast<uint16_t>(port));
+        if (::bind(listenFd_, reinterpret_cast<sockaddr*>(&address), sizeof address) < 0 ||
+            ::listen(listenFd_, 4) < 0) {
+            *error = std::strerror(errno);
+            ::close(listenFd_);
+            listenFd_ = -1;
+            return false;
+        }
+        socklen_t length = sizeof address;
+        ::getsockname(listenFd_, reinterpret_cast<sockaddr*>(&address), &length);
+        port_ = ntohs(address.sin_port);
+        return true;
+    }
+
+    int port() const { return port_; }
+    void stop() { stop_.store(true); }
+
+    // One player at a time, so connections are taken in turn rather than each on
+    // a thread of its own.
+    void run() {
+        while (!stop_.load()) {
+            pollfd poller;
+            poller.fd = listenFd_;
+            poller.events = POLLIN;
+            poller.revents = 0;
+            if (::poll(&poller, 1, 250) <= 0) continue;
+            const int fd = ::accept(listenFd_, nullptr, nullptr);
+            if (fd < 0) continue;
+            handle(fd);
+            ::close(fd);
+        }
+        endSession();
+    }
+
+private:
+    void reply(int fd, int status, const char* reason, const std::string& body) {
+        char head[256];
+        const int length = std::snprintf(
+            head, sizeof head,
+            "HTTP/1.0 %d %s\r\nContent-Type: text/plain\r\nContent-Length: %zu\r\n"
+            "Connection: close\r\n\r\n",
+            status, reason, body.size());
+        sendAll(fd, head, static_cast<size_t>(length));
+        if (!body.empty()) sendAll(fd, body.data(), body.size());
+    }
+
+    void handle(int fd) {
+        timeval timeout;
+        timeout.tv_sec = 15;
+        timeout.tv_usec = 0;
+        ::setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof timeout);
+        ::setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof timeout);
+
+        std::string header;
+        char buffer[2048];
+        while (header.find("\r\n\r\n") == std::string::npos && header.size() < 16384) {
+            const ssize_t got = ::recv(fd, buffer, sizeof buffer, 0);
+            if (got < 0 && errno == EINTR) continue;
+            if (got <= 0) return;
+            header.append(buffer, static_cast<size_t>(got));
+        }
+        const std::string line = header.substr(0, header.find("\r\n"));
+        const size_t space1 = line.find(' ');
+        const size_t space2 = space1 == std::string::npos ? space1 : line.find(' ', space1 + 1);
+        if (space2 == std::string::npos) return;
+        const std::string method = line.substr(0, space1);
+        const std::string target = line.substr(space1 + 1, space2 - space1 - 1);
+        if (method != "GET" && method != "HEAD") {
+            reply(fd, 405, "Method Not Allowed", "only GET\n");
+            return;
+        }
+
+        const size_t query = target.find('?');
+        if (target.substr(0, query) != "/tune") {
+            reply(fd, 404, "Not Found", "usage: /tune?u=<percent-encoded channel url>\n");
+            return;
+        }
+        std::string url;
+        if (query != std::string::npos) {
+            const std::string args = target.substr(query + 1);
+            const size_t at = startsWith(args, "u=") ? 0 : args.find("&u=");
+            if (at != std::string::npos) {
+                const size_t from = at + (at == 0 ? 2 : 3);
+                const size_t end = args.find('&', from);
+                url = urlDecode(args.substr(from, end == std::string::npos ? end : end - from));
+            }
+        }
+        if (url.empty()) {
+            reply(fd, 400, "Bad Request", "no channel url\n");
+            return;
+        }
+
+        endSession();  // whatever was playing is not being watched any more
+        std::string why;
+        std::shared_ptr<RelaySession> session = openSession(url, &why);
+        if (!session) {
+            logf(settings_.verbose, "tune %s: %s", url.c_str(), why.c_str());
+            reply(fd, 502, "Bad Gateway", why + "\n");
+            return;
+        }
+        if (!session->prepareStream(&why)) {
+            logf(settings_.verbose, "tune %s: %s", url.c_str(), why.c_str());
+            endSession();
+            reply(fd, 415, "Unsupported Media Type", why + "\n");
+            return;
+        }
+        logf(settings_.verbose, "tuned %s", url.c_str());
+        const char* head =
+            "HTTP/1.0 200 OK\r\nContent-Type: video/mp2t\r\nCache-Control: no-cache\r\n"
+            "Connection: close\r\n\r\n";
+        if (sendAll(fd, head, std::strlen(head)) && method == "GET") session->streamTo(fd);
+        endSession();
+    }
+
+    Playlist fetch(const std::string& url, std::string* base) {
+        HttpRequest request;
+        request.url = url;
+        request.timeoutSeconds = 15;
+        request.shouldAbort = [this] { return stop_.load(); };
+        HttpResponse response = http_->get(request);
+        *base = response.effectiveUrl.empty() ? url : response.effectiveUrl;
+        return response.ok() ? parsePlaylist(response.body, *base) : Playlist();
+    }
+
+    std::shared_ptr<RelaySession> openSession(const std::string& url, std::string* why) {
+        Channel channel;
+        channel.name = url;
+        channel.url = url;
+
+        std::string base;
+        Playlist playlist = fetch(url, &base);
+        if (playlist.valid && playlist.master) {
+            if (playlist.variants.empty()) {
+                *why = "the playlist lists no renditions";
+                return nullptr;
+            }
+            playlist = fetch(playlist.variants[smallestVariant(playlist)], &base);
+        }
+        if (!playlist.valid || playlist.master || playlist.segments.empty()) {
+            *why = "not an HLS playlist the tuner can read";
+            return nullptr;
+        }
+        std::shared_ptr<RelaySession> session = std::make_shared<RelaySession>(
+            http_, settings_, newSessionId(), base, channel, HlsRelay::ProgressCallback());
+        session->setDecrypt(true);  // the player is fed plain MPEG-TS
+        session->start(playlist);
+        session_ = session;
+        return session;
+    }
+
+    void endSession() {
+        std::shared_ptr<RelaySession> session;
+        session.swap(session_);
+        if (session) {
+            session->stop();
+            session->waitForThreads(3.0);
+        }
+    }
+
+    const std::shared_ptr<HttpClient> http_;
+    const RelaySettings settings_;
+    int listenFd_ = -1;
+    int port_ = 0;
+    std::atomic<bool> stop_{false};
+    std::shared_ptr<RelaySession> session_;
+};
+
+HlsTuner::HlsTuner(std::shared_ptr<HttpClient> http, RelaySettings settings)
+    : impl_(new Impl(std::move(http), settings)) {}
+
+HlsTuner::~HlsTuner() = default;
+
+bool HlsTuner::start(int port, bool lan, std::string* error) {
+    return impl_->start(port, lan, error);
+}
+
+int HlsTuner::port() const { return impl_->port(); }
+
+void HlsTuner::run() { impl_->run(); }
+
+void HlsTuner::stop() { impl_->stop(); }
 
 }  // namespace tv

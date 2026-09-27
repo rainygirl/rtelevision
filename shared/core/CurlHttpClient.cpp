@@ -1,5 +1,6 @@
 // libcurl-backed HttpClient, used on macOS and Linux.
 #include <curl/curl.h>
+#include <pthread.h>
 
 #include <cstdlib>
 #include <cstring>
@@ -14,18 +15,29 @@ namespace {
 // connection cache across curl_easy_reset(), so a thread that fetches segment
 // after segment from the same server reuses its connection instead of paying
 // for a new handshake and TCP slow start every time.
-struct ThreadHandle {
-    CURL* curl = nullptr;
-    ~ThreadHandle() {
-        if (curl) curl_easy_cleanup(curl);
-    }
-};
+//
+// A pthread key rather than thread_local: GCC 4.7, which builds the PowerPC
+// port, has no thread_local, and a key does the same job on every platform -
+// including running the destructor when the thread ends.
+void closeThreadHandle(void* handle) {
+    if (handle) curl_easy_cleanup(static_cast<CURL*>(handle));
+}
+
+pthread_key_t gHandleKey;
+
+void createHandleKey() { pthread_key_create(&gHandleKey, closeThreadHandle); }
 
 CURL* threadHandle() {
-    thread_local ThreadHandle handle;
-    if (handle.curl) curl_easy_reset(handle.curl);
-    else handle.curl = curl_easy_init();
-    return handle.curl;
+    static pthread_once_t once = PTHREAD_ONCE_INIT;
+    pthread_once(&once, createHandleKey);
+    CURL* handle = static_cast<CURL*>(pthread_getspecific(gHandleKey));
+    if (handle) {
+        curl_easy_reset(handle);
+    } else {
+        handle = curl_easy_init();
+        pthread_setspecific(gHandleKey, handle);
+    }
+    return handle;
 }
 
 struct HeaderState {
@@ -107,6 +119,12 @@ public:
 
         curl_easy_setopt(curl, CURLOPT_URL, request.url.c_str());
         curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+        // libcurl reads CURL_CA_BUNDLE only in the command line tool, not in
+        // the library, and a curl built without a baked-in bundle then trusts
+        // nothing. Builds that carry their own certificates - the PowerPC one,
+        // where the system has none libcurl can use - point this at them.
+        if (const char* bundle = std::getenv("CURL_CA_BUNDLE"))
+            if (*bundle) curl_easy_setopt(curl, CURLOPT_CAINFO, bundle);
         curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 10L);
         curl_easy_setopt(curl, CURLOPT_TIMEOUT, request.timeoutSeconds);
         curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 15L);

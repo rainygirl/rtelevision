@@ -17,6 +17,7 @@ enum class Str {
     ColumnChannel,
     TabCategory,
     TabCountry,
+    StandardDefinitionOnly,
     Favorites,
     SelectChannel,
 

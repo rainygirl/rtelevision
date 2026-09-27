@@ -35,7 +35,7 @@ namespace {
 // Frames are decoded on a worker thread and pushed straight into the sink.
 class FFmpegMediaPlayer : public MediaPlayer {
 public:
-    ~FFmpegMediaPlayer() override { stopWorker(); }
+    ~FFmpegMediaPlayer() noexcept override { stopWorker(); }
 
     bool attachVideoView(void*) override { return false; }
     void detachVideoView() override {}

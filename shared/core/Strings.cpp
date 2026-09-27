@@ -24,6 +24,7 @@ const Entry kTable[] = {
     { Str::ColumnChannel, "Channel", "Canale", "チャンネル", "채널" },
     { Str::TabCategory, "Category", "Categoria", "カテゴリ", "카테고리" },
     { Str::TabCountry, "Country", "Paese", "国", "국가" },
+    { Str::StandardDefinitionOnly, "SD only", "Solo SD", "SD のみ", "SD만" },
     { Str::Favorites, "Favorites", "Preferiti", "お気に入り", "즐겨찾기" },
     { Str::SelectChannel, "Pick a channel", "Scegli un canale", "チャンネルを選んでください",
       "채널을 선택하세요" },

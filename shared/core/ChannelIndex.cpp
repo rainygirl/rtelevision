@@ -62,6 +62,13 @@ std::string toUpper(const std::string& s) {
 }
 }  // namespace
 
+bool announcesHighDefinition(const std::string& channelName) {
+    static const char* const kMarkers[] = { "(720p)", "(1080p)", "(1080i)", "(1440p)", "(2160p)" };
+    for (size_t i = 0; i < sizeof kMarkers / sizeof kMarkers[0]; ++i)
+        if (channelName.find(kMarkers[i]) != std::string::npos) return true;
+    return false;
+}
+
 std::vector<std::string> splitCategoryPath(const std::string& groupTitle) {
     std::vector<std::string> out;
     size_t start = 0;

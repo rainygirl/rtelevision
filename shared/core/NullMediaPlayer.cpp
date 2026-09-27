@@ -14,6 +14,11 @@ namespace {
 
 class NullMediaPlayer : public MediaPlayer {
 public:
+    // Spelled out because GCC 4.7, which builds the PowerPC port, does not work
+    // out that an implicit destructor is noexcept when a member's is not
+    // marked so in its own libstdc++.
+    ~NullMediaPlayer() noexcept override {}
+
     bool attachVideoView(void*) override { return false; }
     void detachVideoView() override {}
     bool attachVideoSink(VideoFrameSink*) override { return false; }

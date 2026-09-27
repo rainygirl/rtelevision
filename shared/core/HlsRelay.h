@@ -30,7 +30,15 @@ struct RelaySettings {
     double maxStartWaitSeconds = 40;   // ...unless the server is too slow to get there
     bool verbose = false;
 
-    // RTV_RELAY_CONNECTIONS, RTV_RELAY_BUFFER (seconds) and RTV_VERBOSE.
+    // Hand the player one continuous MPEG-TS body instead of a playlist, for a
+    // backend with no HLS demuxer of its own - libVLC 0.9 on Mac OS X 10.4.
+    // The relay then also decrypts AES-128 segments, which such a player cannot
+    // do, and holds back much less video: writing blocks until the next segment
+    // is ready, so the stream paces itself.
+    bool plainTransportStream = false;
+
+    // RTV_RELAY_CONNECTIONS, RTV_RELAY_BUFFER (seconds), RTV_RELAY_TS and
+    // RTV_VERBOSE.
     static RelaySettings fromEnvironment();
 };
 
@@ -75,5 +83,42 @@ private:
 std::unique_ptr<MediaPlayer> makeRelayedMediaPlayer(std::unique_ptr<MediaPlayer> inner,
                                                     std::shared_ptr<HttpClient> http,
                                                     RelaySettings settings);
+
+// Serves channels to a player that cannot read HLS itself.
+//
+// VLC 0.9 (the newest that runs on Mac OS X 10.4 PowerPC) and older set-top
+// boxes have no HLS demuxer at all: they can play an MPEG-TS stream over HTTP
+// and nothing more. The relay already does the part they are missing - it
+// parses the playlist and fetches the segments itself - so the tuner simply
+// writes those segments out back to back as one continuous MPEG-TS body. The
+// player only ever sees a plain stream.
+//
+//   GET /tune?u=<percent-encoded channel URL>   the channel, as MPEG-TS
+//
+// One player at a time: a new request ends the session before it.
+//
+// Two kinds of channel cannot be served this way and are refused with a reason:
+// AES-128 encrypted streams (the segments would have to be decrypted first) and
+// fragmented MP4 streams (not MPEG-TS, so concatenating them means nothing).
+// Where a channel offers several renditions the smallest is chosen, which is
+// also what the machines this exists for can actually decode.
+class HlsTuner {
+public:
+    HlsTuner(std::shared_ptr<HttpClient> http, RelaySettings settings);
+    ~HlsTuner();
+
+    // port 0 picks a free one. `lan` binds every interface rather than only
+    // loopback, so another machine can reach it.
+    bool start(int port, bool lan, std::string* error);
+    int port() const;
+
+    // Serves until stop() is called from another thread.
+    void run();
+    void stop();
+
+private:
+    class Impl;
+    std::unique_ptr<Impl> impl_;
+};
 
 }  // namespace tv

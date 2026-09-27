@@ -3,6 +3,7 @@ build-*/
 third_party/vlc-macos/
 third_party/vlc-linux-*/
 third_party/vlc-haiku-*/
+third_party/vlc-ppc/
 third_party/.deb-cache-*/
 third_party/*.dmg
 .DS_Store

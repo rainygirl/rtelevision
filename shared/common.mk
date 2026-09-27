@@ -7,6 +7,7 @@
 
 CORE_SRC := \
 	$(SHARED_DIR)/core/StringUtil.cpp \
+	$(SHARED_DIR)/core/Aes128.cpp \
 	$(SHARED_DIR)/core/Country.cpp \
 	$(SHARED_DIR)/core/Strings.cpp \
 	$(SHARED_DIR)/core/M3UParser.cpp \
@@ -21,6 +22,9 @@ CORE_SRC := \
 
 # A platform picks exactly one media backend ...
 CORE_SRC_VLC    := $(SHARED_DIR)/core/VlcMediaPlayer.cpp
+# libVLC 0.9, the last that runs on Mac OS X 10.4: a different API, and no HLS
+# demuxer, so that platform also sets RelaySettings::plainTransportStream.
+CORE_SRC_VLC_LEGACY := $(SHARED_DIR)/core/VlcLegacyMediaPlayer.cpp
 CORE_SRC_FFMPEG := $(SHARED_DIR)/core/FFmpegMediaPlayer.cpp
 CORE_SRC_NULL   := $(SHARED_DIR)/core/NullMediaPlayer.cpp
 
@@ -32,4 +36,7 @@ CLI_SRC := $(SHARED_DIR)/tools/cli_main.cpp
 
 # -MMD -MP makes the compiler emit .d files so a changed header forces a
 # rebuild. Without it a struct layout change silently leaves stale objects.
-CORE_CXXFLAGS := -std=c++17 -O2 -Wall -Wextra -Wno-unused-parameter -MMD -MP -I$(SHARED_DIR)
+# The core is written to C++11 and compiled as C++17 everywhere with a compiler
+# new enough for it. PowerPC Tiger has GCC 4.7, so it sets CORE_CXXSTD=c++11.
+CORE_CXXSTD ?= c++17
+CORE_CXXFLAGS := -std=$(CORE_CXXSTD) -O2 -Wall -Wextra -Wno-unused-parameter -MMD -MP -I$(SHARED_DIR)

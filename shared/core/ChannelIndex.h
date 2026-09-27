@@ -67,4 +67,10 @@ private:
 // Splits a group-title into its hierarchy segments.
 std::vector<std::string> splitCategoryPath(const std::string& groupTitle);
 
+// Whether the channel's name announces a high definition rendition, as
+// iptv-org writes it: "ABC TV NSW (720p)". A name that says nothing counts as
+// standard definition - many SD channels carry no marker, and treating them as
+// HD would hide most of the list from a machine that can only play SD.
+bool announcesHighDefinition(const std::string& channelName);
+
 }  // namespace tv

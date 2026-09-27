@@ -3,6 +3,7 @@
 #include <atomic>
 #include <chrono>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <string>
 #include <thread>
@@ -32,6 +33,26 @@ void printCategory(const tv::CategoryNode& node, const tv::ChannelIndex& index, 
     }
 }
 
+// Percent-encoding for a channel URL carried in a /tune query.
+std::string urlEncode(const std::string& text) {
+    static const char kHex[] = "0123456789ABCDEF";
+    std::string out;
+    out.reserve(text.size() * 3);
+    for (size_t i = 0; i < text.size(); ++i) {
+        const unsigned char c = static_cast<unsigned char>(text[i]);
+        const bool plain = (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
+                           (c >= '0' && c <= '9') || c == '-' || c == '_' || c == '.' || c == '~';
+        if (plain) {
+            out.push_back(static_cast<char>(c));
+        } else {
+            out.push_back('%');
+            out.push_back(kHex[c >> 4]);
+            out.push_back(kHex[c & 15]);
+        }
+    }
+    return out;
+}
+
 void printUsage() {
     std::printf(
         "usage: rtv-cli [command]\n"
@@ -40,6 +61,11 @@ void printUsage() {
         "  refresh           download the playlist and update the offline cache\n"
         "  search <text>     filter channels by name, group or country\n"
         "  relay <url> [s]   run the HLS relay on one stream and print its address\n"
+        "  serve [port]      serve every channel as plain MPEG-TS to players that\n"
+        "                    cannot read HLS (default port 8090, all interfaces)\n"
+        "  playlist <base> [sd]\n"
+        "                    write an M3U whose entries point at a `serve` tuner;\n"
+        "                    `sd` leaves out the channels that announce HD\n"
         "  where             print cache and data locations\n");
 }
 
@@ -80,6 +106,28 @@ int main(int argc, char** argv) {
         return outcome.succeeded ? 0 : 1;
     }
 
+    if (command == "serve") {
+        const int wanted = argc > 2 ? std::atoi(argv[2]) : 8090;
+        tv::RelaySettings settings = tv::RelaySettings::fromEnvironment();
+        settings.verbose = true;
+        // A player handed one continuous stream needs far less of a head start
+        // than one handed a playlist: writing blocks until the next segment is
+        // ready, which paces it by itself. Waiting the playlist default here
+        // just means the player sits without a byte until it times out.
+        if (std::getenv("RTV_RELAY_BUFFER") == nullptr) settings.startBufferSeconds = 6;
+        tv::HlsTuner tuner(std::shared_ptr<tv::HttpClient>(tv::makeHttpClient()), settings);
+        std::string error;
+        if (!tuner.start(wanted, true, &error)) {
+            std::fprintf(stderr, "cannot listen on port %d: %s\n", wanted, error.c_str());
+            return 1;
+        }
+        std::printf("tuner listening on port %d (every interface)\n", tuner.port());
+        std::printf("a player opens http://<this machine>:%d/tune?u=<channel url>\n", tuner.port());
+        std::fflush(stdout);
+        tuner.run();
+        return 0;
+    }
+
     if (command == "relay" && argc > 2) {
         tv::RelaySettings settings = tv::RelaySettings::fromEnvironment();
         settings.verbose = true;
@@ -103,6 +151,24 @@ int main(int argc, char** argv) {
     if (!app.loadLocalPlaylist()) {
         std::printf("no offline playlist available; run `rtv-cli refresh` first\n");
         return 1;
+    }
+
+    if (command == "playlist" && argc > 2) {
+        std::string base = argv[2];
+        while (!base.empty() && base[base.size() - 1] == '/') base.erase(base.size() - 1);
+        const bool sdOnly = argc > 3 && std::string(argv[3]) == "sd";
+        std::printf("#EXTM3U\n");
+        const tv::ChannelList& all = app.index().channels();
+        size_t written = 0;
+        for (size_t i = 0; i < all.size(); ++i) {
+            const tv::Channel& ch = all[i];
+            if (sdOnly && tv::announcesHighDefinition(ch.name)) continue;
+            std::printf("#EXTINF:-1 group-title=\"%s\",%s\n", ch.group.c_str(), ch.name.c_str());
+            std::printf("%s/tune?u=%s\n", base.c_str(), urlEncode(ch.url).c_str());
+            ++written;
+        }
+        std::fprintf(stderr, "%zu of %zu channels written\n", written, all.size());
+        return 0;
     }
 
     if (argc > 2 && std::string(argv[2]) == "country") app.index().setGrouping(tv::Grouping::Country);

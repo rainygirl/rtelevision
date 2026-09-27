@@ -17,7 +17,7 @@ namespace {
 
 class VlcMediaPlayer : public MediaPlayer {
 public:
-    ~VlcMediaPlayer() override {
+    ~VlcMediaPlayer() noexcept override {
         {
             std::lock_guard<std::mutex> lock(watchdogMutex_);
             quit_ = true;

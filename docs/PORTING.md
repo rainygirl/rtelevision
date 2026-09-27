@@ -265,6 +265,153 @@ vlc도 ffmpeg도 없다. `pkgman install vlc`가
   `-lvlccore`를 실행 파일에 직접 링크해 로더가 앱의 rpath로 찾게 해야 한다.
   (Linux에서 RUNPATH 때문에 겪은 것과 같은 문제다.)
 
+## PowerPC Mac (Mac OS X 10.4 Tiger) — 네이티브 포팅 진행 중
+
+iMac G4 (PowerPC 7450 1 GHz, 1 GB, 디스크 여유 5 GB)에 G4 단독으로 도는 앱을
+올리는 중이다. 다른 기기가 필요 없어야 한다.
+
+### 처음 판단이 틀렸던 것
+
+코어를 C++17로 보고 "C++98로 내리려면 250곳을 고쳐야 한다"고 판단했는데,
+실제로 재 보니 코어는 **엄격한 C++11 기준으로도 위반이 0건**이다. C++17로
+컴파일하고 있을 뿐 C++17 기능을 쓰지 않는다.
+
+이게 난이도를 완전히 바꾼다. 필요한 것은 최신 GCC가 아니라 **GCC 4.7**이고,
+4.7은 C로 작성된 마지막 GCC라 Tiger의 GCC 4.0.1로 직접 빌드할 수 있다.
+크로스 툴체인도, 코어 수정도 필요 없다.
+
+`shared/common.mk`의 `CORE_CXXSTD`로 플랫폼이 표준을 고른다. PPC만 `c++11`이고
+나머지는 그대로 `c++17`이다.
+
+### 막는 것과 해법
+
+| 항목 | 해법 |
+|---|---|
+| 컴파일러 | GCC 4.7.4를 기기에서 직접 빌드. `--disable-bootstrap`, C/C++만 |
+| HLS 없음 | 릴레이의 평문 MPEG-TS 모드. VLC는 HLS를 볼 일이 없다 |
+| AES-128 | 평문 TS를 받는 재생기는 키를 못 보므로 릴레이가 직접 복호화 (`Aes128.cpp`) |
+| TLS | OpenSSL 1.1.1w와 curl 7.87을 기기에서 빌드 |
+| libVLC API | 0.9는 호출마다 `libvlc_exception_t`를 받는다. `VlcLegacyMediaPlayer.cpp` |
+| 영상 출력 | `libvlc_drawable_t`는 `int`다. 32비트라 NSView\*를 넣을 수 있다 |
+| UI | Cocoa 헤더는 Apple GCC 4.0.1이 안다. 순수 Objective-C로 쓰고 C 경계에서 만난다 |
+
+### 컴파일러 두 개를 섞는 방법
+
+Tiger의 Cocoa 헤더는 Apple GCC 4.0.1이 가장 잘 다루고, 코어는 GCC 4.7이
+필요하다. 둘은 C++ ABI를 공유할 수 없으므로 **경계를 C로 둔다.**
+
+- 코어와 `UiBridge.cpp`: GCC 4.7 (C++11)
+- `UiBridge.h`: C89로도 유효한 헤더
+- Cocoa 프런트엔드: 순수 Objective-C, Apple GCC 4.0.1
+- 링크: GCC 4.7의 g++ (libstdc++가 따라온다) + `-framework Cocoa`
+
+채널 트리는 브리지가 **평탄한 행 배열로 만들어 넘긴다.** NSOutlineView는 자식을
+한 단계씩 되물어서 경계를 너무 자주 넘는다. 들여쓴 목록이 같은 그림을 그린다.
+
+### 상태 — 완료
+
+G4 단독으로 동작한다. 다른 기기는 필요 없다.
+
+- [x] 코어가 C++11임을 확인 (엄격 모드 위반 0)
+- [x] GCC 4.7.4를 기기에서 빌드 (2시간 7분)
+- [x] OpenSSL 1.0.2u + curl 7.87 빌드
+- [x] 릴레이 평문 MPEG-TS 모드 + AES-128 복호화
+- [x] `VlcLegacyMediaPlayer.cpp`
+- [x] Cocoa 프런트엔드와 `UiBridge`
+- [x] rtv-cli가 HTTPS로 채널 목록 10,944개 수신
+- [x] 앱 번들 빌드, 설치, 재생 확인
+
+### 컴파일러를 세 개 쓴다
+
+| 대상 | 컴파일러 | 이유 |
+|---|---|---|
+| C++ 코어 | GCC 4.7.4 | C++11이 필요하다 |
+| Cocoa 프런트엔드 | Apple GCC 4.0.1 | Tiger의 Cocoa 헤더를 아는 유일한 컴파일러 |
+| OpenSSL, curl | Apple GCC 4.0.1 | `-arch ppc`는 Apple 확장이라 GCC 4.7이 거부한다 |
+
+셋 다 C 경계에서만 만나므로 C++ ABI가 섞이지 않는다. libstdc++와 libgcc는 정적으로
+넣어서 앱이 `DYLD_LIBRARY_PATH` 없이 뜬다.
+
+### GCC 4.7 때문에 고친 것
+
+코어는 C++11이지만 GCC 4.7은 C++11을 다 구현하지 못했다.
+
+| 걸린 것 | 대응 |
+|---|---|
+| `std::map::emplace` (4.8부터) | `insert(make_pair(...))` |
+| 소멸자의 암묵적 `noexcept`를 추론 못 함 | 파생 클래스 다섯 곳에 명시 |
+| `thread_local` (4.8부터) | pthread 키 |
+| 32비트 PPC에 64비트 원자 연산 없음 | 세대 카운터를 32비트로 |
+
+모두 표준 C++11이라 다른 세 플랫폼 빌드에는 영향이 없다.
+
+### Tiger와 VLC 0.9 때문에 고친 것
+
+- **`makedepend`가 없다.** OpenSSL의 `make depend`를 건너뛴다. 깨끗한 트리에는 필요 없다.
+- **Perl이 5.8.6이다.** OpenSSL 1.1.1은 5.10을 요구한다. 1.0.2u를 쓴다. TLS 1.2는 된다.
+- **libcurl은 `CURL_CA_BUNDLE`을 읽지 않는다.** 그건 명령행 도구의 동작이다. 코어가
+  그 변수를 읽어 `CURLOPT_CAINFO`로 넘기고, 앱은 번들 안의 `cacert.pem`을 가리킨다.
+- **VLC 0.9에 `--network-caching`이 없다.** 모르는 옵션 하나에 `libvlc_new`가 통째로
+  실패한다. `--http-caching`으로 바꿨다.
+- **`libvlc_drawable_t`는 `int`다.** 32비트라 NSView 포인터가 들어간다.
+- **libvlc의 미정의 심볼이 `@loader_path/../lib/libvlccore.0.dylib` 소속으로 기록되어
+  있다.** 링커가 따라갈 수 없는 경로라 `-dylib_file`로 실제 파일에 대응시킨다.
+  실행 시에는 번들 배치가 VLC.app과 같아서 저절로 풀린다.
+- **`libmacosx_plugin`을 빼야 한다.** VLC 자체 GUI 모듈인데, 로드되는 것만으로 EyeTV
+  분산 알림 옵서버를 등록하고 그 핸들러가 널 객체를 건드려 프로세스를 죽인다.
+  영상 출력은 `minimal_macosx`가 맡는다.
+- **`libzvbi`도 빼야 한다.** libiconv 7로 빌드되었는데 Tiger는 5다. VLC.app에서도 깨진다.
+
+### 화면 출력에서 걸린 것
+
+libVLC 0.9의 OpenGL 출력은 `CGDisplayUsesOpenGLAcceleration`을 확인하고 거짓이면
+바로 포기한다. 이 iMac G4에는 Quartz Extreme이 없어서 해당한다. 그러면 libVLC는
+후보를 훑다가 `caca`, 즉 ASCII 아트 출력으로 떨어진다.
+
+그래서 `vmem` 출력을 쓴다. 디코딩 결과를 메모리 버퍼에 받아 프런트엔드가 직접
+그리는 방식이고, Haiku가 쓰는 `VideoFrameSink`와 같은 경로다. vmem은 설정을
+인스턴스 생성 시점에만 읽으므로(`config_GetPsz`는 객체 변수가 아니라 설정을 본다)
+버퍼 크기가 고정이고, 뷰가 레터박스로 맞춘다.
+
+빅엔디언에서 RV24의 바이트 순서는 R, G, B가 아니라 **B, G, R**이다. 프레임당 한 번
+교환한다.
+
+### 재생 속도
+
+700 MHz G4에서 480p H.264는 아슬아슬하다. 처음에는 프레임 지연이 분당 수백 건이었다.
+
+| 설정 | 결과 |
+|---|---|
+| 옵션 없음 | 지연 다수 |
+| `--ffmpeg-skiploopfilter=4 --ffmpeg-hurry-up --skip-frames` | 지연 0, 화면이 블록으로 무너짐 |
+| `--ffmpeg-skiploopfilter=1 --drop-late-frames` | 지연 0, 화질 정상 |
+
+`--ffmpeg-hurry-up`과 `--skip-frames`는 디코더가 **참조 프레임까지** 버리게 해서
+다음 키 프레임까지 블록이 남는다. 참조되지 않는 프레임의 디블로킹만 건너뛰고
+(`skiploopfilter=1`), 늦은 그림은 출력 단계에서 버리는(`--drop-late-frames`) 쪽이
+디코딩 결과를 해치지 않으면서 같은 효과를 낸다.
+
+프런트엔드 쪽도 프레임마다 `NSBitmapImageRep`을 새로 만들지 않고 캐시하며,
+확대는 `NSImageInterpolationNone`으로 한다.
+
+### 그 밖에 걸린 것
+
+- `NSTableColumn`은 기본이 편집 가능이라 더블클릭이 이름 변경으로 들어간다.
+  `setEditable:NO`가 필요하다.
+- `screencapture`는 디스플레이가 절전이면 종료 코드 0으로 아무것도 쓰지 않는다.
+  키 이벤트로 깨운 뒤에야 동작한다.
+- 이 기기는 GUI 스크립팅이 꺼져 있어 System Events로 UI 요소에 접근할 수 없다.
+  프로세스를 앞으로 가져오는 것은 되고, 클릭은 Quartz 이벤트로 보내야 한다.
+
+### 측정값
+
+| 항목 | 값 |
+|---|---|
+| 채널 목록의 HLS 비율 | 10,603 / 10,944 |
+| 720x576 H.264 재생 | 됨. 45초에 프레임 스킵 44회 |
+| 720p 이상 | 불가 |
+| 표본 15채널 중 재생됨 (AES 복호화 후) | 7 |
+
 ## 다른 플랫폼
 
 - **Windows**: `attachVideoView`에 `set_hwnd` 분기가 이미 있다.

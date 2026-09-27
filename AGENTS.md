@@ -31,6 +31,7 @@ One portable C++17 core, one native front end per platform:
 | Linux x86_64 | GTK3 | libVLC 3.0.9 from the distribution | yes, 353 plugins |
 | Haiku x86_64 / x86 | BeAPI | libVLC 3.0.23 | yes, unpacked from HaikuPorts |
 | Haiku arm64 | BeAPI | FFmpeg 6.1.2 | yes, cross-built |
+| Mac OS X 10.4 PowerPC | Cocoa (Objective-C) | libVLC 0.9.10 | yes, from the PowerPC VLC |
 
 VLC never has to be installed by the user; every build carries its own media
 library.
@@ -47,10 +48,13 @@ shared/core/          portable C++17: no UI, no platform SDK calls
   AppController       ties store, index, favorites and player together
   MediaPlayer         backend interface, VideoFrameSink, AudioSink
     VlcMediaPlayer      libVLC
+    VlcLegacyMediaPlayer  libVLC 0.9, for Mac OS X 10.4 PowerPC
     FFmpegMediaPlayer   FFmpeg, where there is no libVLC (Haiku arm64)
     NullMediaPlayer     no playback; everything else still works
-  HlsRelay            local relay for live streams slower than their bitrate
+  HlsRelay            local relay for live streams slower than their bitrate,
+                      and HlsTuner, which serves channels as plain MPEG-TS
   RelayedMediaPlayer  MediaPlayer decorator that routes eligible HLS through it
+  Aes128              AES-128-CBC decryption, for #EXT-X-KEY segments
   HttpClient          HTTP interface
     CurlHttpClient      libcurl (macOS, Linux)
     HaikuHttpClient     Haiku network services
@@ -61,6 +65,9 @@ shared/common.mk      core source lists and flags for every platform Makefile
 platforms/macos/      Cocoa front end, Makefile, install.sh, fetch-libvlc.sh
 platforms/linux/      GTK3 front end, Makefile, install.sh, fetch-libvlc.sh
 platforms/haiku/      BeAPI front end (BSoundPlayer audio), Makefile, install.sh
+platforms/macos-ppc/  Mac OS X 10.4 PowerPC: Cocoa front end and UiBridge, the C
+                      boundary that lets Apple GCC 4.0.1 build the UI while
+                      GCC 4.7 builds the C++11 core
 resources/            seed playlist, app icon and the script that draws it
 scripts/              build-ffmpeg-haiku.sh
 third_party/          vendored libVLC / FFmpeg trees (fetched or built)
@@ -124,6 +131,35 @@ player's first playlist request is held until 20 s of video is ready (at most
   and every request the relay serves.
 - `rtv-cli relay <url> [seconds]` runs the relay alone and prints its address.
 
+### Tuner: serving players that have no HLS at all
+
+`HlsTuner` wraps the relay for players that cannot read an HLS playlist: it
+writes the segments out back to back as one continuous MPEG-TS body, so the
+player only ever sees a plain stream over HTTP.
+
+```sh
+rtv-cli serve [port]                      # default 8090, every interface
+rtv-cli playlist http://host:8090 [sd]    # an M3U pointing at that tuner
+```
+
+```
+GET /tune?u=<percent-encoded channel URL>   ->  video/mp2t
+```
+
+One player at a time; a new request ends the session before it. Where a channel
+offers several renditions the smallest is taken, which is what the machines
+needing this can decode. Unlike the ordinary relay path, the tuner decrypts
+AES-128 segments itself (`Aes128.cpp`): the player never sees the key tag, so it
+cannot do it. Fragmented MP4 streams are refused - concatenating them as MPEG-TS
+would mean nothing - and so are channels whose playlist cannot be read.
+
+`playlist ... sd` leaves out the channels whose name announces HD, which the
+machines this exists for cannot decode anyway. The resolution is only a hint in
+the channel name, so it is not exact.
+
+This is what makes R Television usable on a PowerPC Mac: see
+`docs/PORTING.md`.
+
 ## FFmpeg backend pacing
 
 Audio is the master clock. Video packets wait in a queue, still compressed,
@@ -185,6 +221,31 @@ PREFIX=/usr/local sudo -E ./install.sh
 Without root, headers can come from an extracted "devroot" via
 `PKG_CONFIG_PATH`/`PKG_CONFIG_SYSROOT_DIR`.
 
+### Mac OS X 10.4, PowerPC
+
+The core is written to C++11 and only compiled as C++17, so this platform needs
+GCC 4.7 - the last GCC written in C, which Tiger's own GCC 4.0.1 can therefore
+build - rather than a modern cross toolchain. `shared/common.mk` takes
+`CORE_CXXSTD` so only this platform drops to `c++11`.
+
+libVLC 0.9.10 is the last that runs on 10.4 and has no HLS demuxer, so this
+platform sets `RelaySettings::plainTransportStream`: the relay hands the backend
+one continuous MPEG-TS body and decrypts AES-128 itself, because a player fed a
+plain stream never sees the key tag.
+
+The picture comes back through `VideoFrameSink`, as on Haiku: libVLC's OpenGL
+output checks `CGDisplayUsesOpenGLAcceleration` and refuses to start on a Mac
+without Quartz Extreme, so the backend uses VLC's `vmem` output and the Cocoa
+view draws the buffer. The list has an SD-only switch beside the search field,
+on by default wherever `hw.cpusubtype` is not the G5: a G4 cannot decode 720p.
+
+```sh
+cd platforms/macos-ppc
+make toolchain          # what to build and where it goes
+make cli                # rtv-cli, the first thing to bring up
+make                    # the application bundle
+```
+
 ### Haiku
 
 `install.sh` installs any missing `gcc` / `haiku_devel` with `pkgman`, finds or
@@ -223,6 +284,7 @@ and run `./install.sh`; it picks the FFmpeg backend up by itself.
 |---|---|---|---|
 | macOS | `platforms/macos/build/<archs>/R Television.app` (about 193 MB, mostly VLC plugins) | `/Applications/R Television.app` | `~/Library/Application Support/RTelevision/` |
 | Linux | `platforms/linux/build/` | `~/.local/lib/RTelevision/`, `~/.local/bin/r-television`, `.desktop` entry and icon under `~/.local/share` | `~/.local/share/RTelevision/` |
+| Mac OS X 10.4 PowerPC | `platforms/macos-ppc/build/` | `/Applications/R Television.app` (about 45 MB) | `~/Library/Application Support/RTelevision/` |
 | Haiku | `platforms/haiku/build/` | `~/config/non-packaged/apps/RTelevision/` holding the binary, `lib/` with the bundled `.so` files and `vlc/plugins`; snapshot in `~/config/non-packaged/data/RTelevision/`, Deskbar link | `~/config/settings/RTelevision/` |
 
 Every bundle also carries `LICENSE`, `THIRD-PARTY-NOTICES.md` and `licenses/`.
@@ -289,6 +351,10 @@ The core without a window; the first thing to bring up on a new platform.
   so libVLC rescans its plugins at start-up.
 - Some streams (ABC among them) carry damaged transport streams; decoders report
   continuity errors and occasional corrupt frames whatever the player.
+- A Command Line Tools SDK newer than the installed linker makes every link fail
+  with `tapi error: malformed file ... unknown architecture arm64e.x1`. Build
+  against Xcode's own SDK instead:
+  `make cli CXX="xcrun clang++ -isysroot $(xcrun --sdk macosx --show-sdk-path)"`.
 
 ## Documentation rules
 

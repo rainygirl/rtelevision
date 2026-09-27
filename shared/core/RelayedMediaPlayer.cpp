@@ -29,7 +29,7 @@ public:
         });
     }
 
-    ~RelayedMediaPlayer() override {
+    ~RelayedMediaPlayer() noexcept override {
         cancelProbe();
         inner_->stop();
         relay_.reset();
@@ -48,7 +48,7 @@ public:
         // Stop the old stream now, the way a direct play() would. Left running it
         // keeps asking the closed relay session and reports errors meanwhile.
         inner_->stop();
-        const uint64_t generation = ++generation_;
+        const uint32_t generation = ++generation_;
         notify(PlaybackState::Opening, channel.name);
         probe_ = std::thread([this, channel, generation]() {
             auto cancelled = [this, generation]() { return generation_.load() != generation; };
@@ -110,7 +110,9 @@ private:
     std::unique_ptr<MediaPlayer> inner_;
     std::unique_ptr<HlsRelay> relay_;
     std::thread probe_;
-    std::atomic<uint64_t> generation_{0};
+    // 32-bit: a 64-bit atomic needs libatomic on 32-bit PowerPC, and a counter
+    // of channel switches has no use for the extra range.
+    std::atomic<uint32_t> generation_{0};
     std::mutex mutex_;
     StateCallback callback_;
 };
