@@ -96,9 +96,16 @@ own.
    else on the system is touched.
 3. Start **RTelevision** from **Deskbar > Applications**.
 
-On **arm64** there is no VLC or FFmpeg package for Haiku, so FFmpeg has to be
-built on another computer before step 2. The steps are in
-[AGENTS.md](AGENTS.md#haiku-arm64-ffmpeg).
+On **arm64** (RENKU) R Television comes ready-built, with FFmpeg inside the
+package, from pkgman.rainygirl.com:
+
+```sh
+pkgman install rtelevision
+```
+
+The RENKU arm64 image already has that repository; elsewhere add it first with
+`pkgman add-repo https://pkgman.rainygirl.com/arm64`. To build it yourself,
+see [AGENTS.md](AGENTS.md#haiku-arm64-ffmpeg).
 
 ## Uninstall
 

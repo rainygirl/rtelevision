@@ -77,9 +77,16 @@ Linux Mint 20.3 と Ubuntu 20.04 で確認しています。
    システムのほかの部分には手を触れません。
 3. **Deskbar > Applications** から **RTelevision** を起動します。
 
-**arm64** の Haiku には VLC も FFmpeg もパッケージがないため、手順 2 の前に別の
-コンピュータで FFmpeg をビルドする必要があります。手順は
-[AGENTS.md](AGENTS.md#haiku-arm64-ffmpeg)(英語)にあります。
+**arm64**(RENKU)では、FFmpeg を同梱したビルド済みパッケージを
+pkgman.rainygirl.com から導入できます。
+
+```sh
+pkgman install rtelevision
+```
+
+RENKU arm64 イメージにはこのリポジトリが登録済みです。他の環境ではまず
+`pkgman add-repo https://pkgman.rainygirl.com/arm64` で追加してください。自分で
+ビルドする手順は [AGENTS.md](AGENTS.md#haiku-arm64-ffmpeg)(英語)にあります。
 
 ## アンインストール
 

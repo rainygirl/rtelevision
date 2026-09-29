@@ -7,3 +7,5 @@ third_party/vlc-ppc/
 third_party/.deb-cache-*/
 third_party/*.dmg
 .DS_Store
+# cross-built binaries (pkgman-repo/scripts/cross-arm64.sh)
+dist/
