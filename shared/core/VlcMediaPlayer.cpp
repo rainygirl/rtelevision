@@ -47,6 +47,30 @@ public:
             "--intf=dummy",
             config.verbose ? "--verbose=2" : "--quiet",
         };
+#if defined(__HAIKU__)
+        // The machines this front end targets are slow enough that the two
+        // defaults below decide whether a 960x540 stream plays at all. Measured
+        // on a 1.33 GHz Atom Z520 playing NHK General TV, counting libVLC's
+        // "picture is too late to be displayed" over 75 seconds:
+        //
+        //   stock                                      ~720
+        //   swscale-mode=0                              106
+        //   swscale-mode=0 + skiploopfilter=4            78
+        //
+        // swscale's default is Bicubic, which costs more than the decode on
+        // this class of machine; fast bilinear is indistinguishable once the
+        // frame is scaled down to the window anyway. Dropping the H.264
+        // deblocking filter is the usual trade on hardware without a video
+        // decoder, and the artefacts it leaves are mild at this bitrate.
+        //
+        // Forcing --avcodec-threads is a trap and is deliberately absent: two
+        // threads on a two-thread CPU measured *worse* than libavcodec's own
+        // choice (336 late frames against 78). For a machine that still cannot
+        // keep up, RTV_VLC_ARGS="--avcodec-skip-frame=1" drops B-frames and
+        // removes the stutter at the cost of visibly coarser motion.
+        args.push_back("--swscale-mode=0");
+        args.push_back("--avcodec-skiploopfilter=4");
+#endif
         args.insert(args.end(), config.extraArgs.begin(), config.extraArgs.end());
 
         std::vector<const char*> argv;

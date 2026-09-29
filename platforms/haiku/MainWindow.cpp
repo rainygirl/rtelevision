@@ -368,6 +368,9 @@ void MainWindow::MessageReceived(BMessage* message) {
             message->FindString("error", &error);
 
             if (updated) {
+                // The worker parked the list rather than publishing it; this
+                // is the thread that owns the index, so apply it here.
+                fController->applyPendingSnapshot();
                 fRefreshNote = "";
                 ReloadChannelTree();
             } else if (notModified) {

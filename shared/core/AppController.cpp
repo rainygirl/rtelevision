@@ -56,17 +56,36 @@ void AppController::refreshAsync(RefreshCallback done) {
     worker_ = std::thread([this, done]() {
         PlaylistSnapshot snapshot;
         RefreshResult result = store_.refresh(*http_, snapshot);
-        if (result.updated) {
-            // Publishing the parsed list here is safe: the front end only reads
-            // the index from its UI thread after `done` marshals back to it.
-            applySnapshot(snapshot);
-        }
         {
             std::lock_guard<std::mutex> lock(mutex_);
+            // The list is parked here, not published. ChannelIndex has no lock
+            // of its own, and setChannels() replaces the vector the UI thread
+            // may be sorting at that moment - rebuild() holds indices into it,
+            // so the reallocation left the sort comparing freed strings and the
+            // app died in toLower() with a null data pointer. The UI thread
+            // picks the list up from applyPendingSnapshot() instead.
+            if (result.updated) {
+                pending_ = std::move(snapshot);
+                hasPending_ = true;
+            }
             refreshing_ = false;
         }
         if (done) done(result);
     });
+}
+
+
+bool AppController::applyPendingSnapshot() {
+    PlaylistSnapshot snapshot;
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (!hasPending_) return false;
+        snapshot = std::move(pending_);
+        pending_ = PlaylistSnapshot();
+        hasPending_ = false;
+    }
+    applySnapshot(snapshot);
+    return true;
 }
 
 bool AppController::startPlayer(std::string* errorOut) {

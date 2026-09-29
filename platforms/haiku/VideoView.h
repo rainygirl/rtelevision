@@ -21,6 +21,8 @@ public:
 
     void Draw(BRect updateRect) override;
     void MouseDown(BPoint where) override;
+    void FrameResized(float width, float height) override;
+    void AttachedToWindow() override;
 
     bool HasFrame() const { return fBitmap != NULL; }
     void SetPlaceholder(const char* text);
@@ -34,11 +36,16 @@ public:
 
 private:
     BRect LetterboxedRect() const;
+    void FillAround(BRect inner, BRect updateRect);
 
     BLocker fLock;
     BBitmap* fBitmap;
-    unsigned fWidth;
+    unsigned fWidth;   // the buffer libVLC decodes into
     unsigned fHeight;
+    // setupFormat() runs on a libVLC thread and cannot lock the window, so the
+    // view size it needs is cached here and refreshed from FrameResized().
+    float fViewWidth;
+    float fViewHeight;
     BString fPlaceholder;
 };
 

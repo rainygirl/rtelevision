@@ -38,6 +38,9 @@ public:
 
     // Downloads in the background. Only one refresh runs at a time.
     void refreshAsync(RefreshCallback done);
+    // Hands the refreshed playlist to the index. Must run on the thread that
+    // reads the index - the worker cannot do it, see refreshAsync().
+    bool applyPendingSnapshot();
     bool refreshing() const { return refreshing_; }
 
     bool startPlayer(std::string* errorOut);
@@ -63,6 +66,8 @@ private:
 
     std::thread worker_;
     std::mutex mutex_;
+    PlaylistSnapshot pending_;
+    bool hasPending_ = false;
     bool refreshing_ = false;
     PlaylistSource source_ = PlaylistSource::None;
     std::time_t fetchedAt_ = 0;
