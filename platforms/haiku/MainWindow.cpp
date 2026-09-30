@@ -11,6 +11,7 @@
 #include <SplitView.h>
 
 #include <cmath>
+#include <unistd.h>
 
 #include "core/Country.h"
 #include "core/Strings.h"
@@ -425,7 +426,30 @@ void MainWindow::MessageReceived(BMessage* message) {
     }
 }
 
+namespace {
+
+// Ends the process if an orderly shutdown has not managed to within a few
+// seconds. libVLC's stop can wedge on Haiku: on 2026-09-30 a close mid-stream
+// left the window thread in libvlc_media_player_stop(), joining the input
+// thread, which was joining a decoder thread that never returned from the
+// Haiku audio output. The window stayed on screen and the team never exited.
+// Nothing is saved at exit (favourites and the cache are written when they
+// change), so leaving without the rest of the teardown loses nothing.
+int32 QuitWatchdog(void*) {
+    snooze(4000000);
+    _exit(0);
+    return 0;
+}
+
+}  // namespace
+
 bool MainWindow::QuitRequested() {
+    // The window goes at once, whatever the player does next.
+    Hide();
+    thread_id watchdog = spawn_thread(QuitWatchdog, "quit watchdog",
+                                      B_NORMAL_PRIORITY, NULL);
+    if (watchdog >= 0) resume_thread(watchdog);
+
     MediaPlayer* player = fController->player();
     if (player != NULL) {
         player->stop();

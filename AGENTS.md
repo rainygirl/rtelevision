@@ -452,6 +452,13 @@ The core without a window; the first thing to bring up on a new platform.
   relay passes that URL to the backend when it declines a channel: libVLC on
   Haiku ends its input silently on such a redirect. `VlcMediaPlayer` also runs
   a watchdog that turns an input that ended without an event into an error.
+- Closing the window mid-stream could leave the app running on Haiku: the
+  window thread sat in `libvlc_media_player_stop()`, joining the input
+  thread, which was joining a decoder thread that never came back from
+  libVLC's Haiku audio output. `MainWindow::QuitRequested()` now hides the
+  window at once and starts a watchdog that `_exit()`s the team if the
+  orderly shutdown has not finished in four seconds. Nothing is saved at
+  exit, so nothing is lost.
 - Haiku `make uninstall` removes the app directory (binary, bundled `.so`
   files, `vlc/plugins`), the Deskbar link and the snapshot folder, but not the
   cache in `~/config/settings/RTelevision`.

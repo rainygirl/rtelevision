@@ -9,3 +9,5 @@ third_party/*.dmg
 .DS_Store
 # cross-built binaries (pkgman-repo/scripts/cross-arm64.sh)
 dist/
+# Chromium shim headers for the GMA500 module, not build output.
+!platforms/haiku/msvdx/shim/build/
