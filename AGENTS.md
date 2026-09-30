@@ -29,14 +29,13 @@ One portable C++17 core, one native front end per platform:
 |---|---|---|---|
 | macOS arm64 / x86_64 | Cocoa (Objective-C++) | libVLC 3.0.23 | yes, 343 plugins |
 | Linux x86_64 | GTK3 | libVLC 3.0.9 from the distribution | yes, 353 plugins |
-| Haiku x86_64 | BeAPI | libVLC 3.0.23 | no, HaikuPorts `vlc` is a dependency |
+| Haiku x86_64 | BeAPI | libVLC 3.0.23 | yes, pruned from HaikuPorts |
 | Haiku x86 (x86_gcc2 hybrid) | BeAPI | libVLC 3.0.23 | yes, unpacked from HaikuPorts |
 | Haiku arm64 | BeAPI | FFmpeg 6.1.2 | yes, cross-built |
 | Mac OS X 10.4 PowerPC | Cocoa (Objective-C) | libVLC 0.9.10 | yes, from the PowerPC VLC |
 
-VLC never has to be installed by the user by hand. Every build but the Haiku
-x86_64 one carries its own media library; there HaikuPorts publishes `vlc`, so
-the package requires it and `pkgman` installs it alongside.
+VLC never has to be installed by the user; every build carries its own media
+library.
 
 ## Repository layout
 
@@ -283,14 +282,13 @@ publishes for it differs:
 | Repository | Package | Built | Media library |
 |---|---|---|---|
 | `x86_gcc2` | `rtelevision_x86`, requires `haiku_x86` | on the machine, `setarch x86 make` | bundled, from `third_party/vlc-haiku-BePC` |
-| `x86_64` | `rtelevision`, requires `haiku` and `lib:libvlc` | cross, `platforms/haiku/cross-x86_64.sh` | HaikuPorts `vlc`, which `pkgman` installs alongside |
+| `x86_64` | `rtelevision`, requires `haiku` | cross, `platforms/haiku/cross-x86_64.sh` | bundled, pruned from the HaikuPorts `vlc` and its dependencies |
 | `arm64` | `rtelevision`, requires `haiku` and `lib:libssl` | cross, `pkgman-repo` `scripts/cross-arm64.sh` | bundled, from `third_party/ffmpeg-haiku-arm64` |
 
 The `_x86` name on the hybrid is the HaikuPorts convention for a package built
 against the secondary architecture, the same as `vlc_x86`; the core is C++17,
-which the gcc2 primary compiler cannot build. That image has no `vlc` package
-of its own, so there libVLC travels inside the package, and the layout is the
-one `make install` produces - `lib/` beside the binary, because the runtime
+which the gcc2 primary compiler cannot build. Every architecture carries its
+own media library, and the layout is the one `make install` produces - `lib/` beside the binary, because the runtime
 loader looks there and the VLC plugins, which carry no rpath, find
 `libdvbpsi` and the rest the same way.
 
@@ -311,7 +309,7 @@ scripts/deploy.sh x86_gcc2                # from the workstation, to the web ser
 #### Haiku x86_64: cross-compiling with clang
 
 No Haiku x86_64 machine has to exist to publish for it. `cross-x86_64.sh`
-builds `dist/x86_64/RTelevision` on the workstation with clang, whose
+builds `dist/x86_64/` on the workstation with clang, whose
 `x86_64-unknown-haiku` target means no cross toolchain has to be built; only
 the C runtime startup files come from Haiku's gcc, through `-B`.
 
@@ -319,14 +317,32 @@ the C runtime startup files come from Haiku's gcc, through `-B`.
 RTV_HAIKU_SYSROOT=/Volumes/HaikuX64/sysroot sh platforms/haiku/cross-x86_64.sh
 ```
 
-The sysroot is `haiku` and `haiku_devel` from the Haiku repository plus `gcc`,
-`gcc_syslibs`, `gcc_syslibs_devel`, `vlc` and `vlc_devel` from HaikuPorts,
-unpacked on top of each other into `<sysroot>/boot/system` with Haiku's own
-`package extract`. It has to sit on a **case-sensitive** filesystem: Haiku
-ships both `<string.h>` and the BString header `<String.h>`, and on a
-case-insensitive volume - which is what macOS formats by default - the first
-`#include <string.h>` picks up BString and nothing compiles. `hdiutil create
--fs "Case-sensitive APFS"` makes a volume that works.
+HaikuPorts does publish `vlc` for x86_64, so this could have been a 0.8 MB
+package that requires `lib:libvlc`. It is not, because that pulls in qt5 and
+the GStreamer stack: measured, `pkgman install rtelevision` then downloads
+several hundred megabytes, and on a live image it fails outright with "no
+space left on device". The script bundles a pruned libVLC instead - 41
+libraries and 293 plugins, about 56 MB unpacked and 20 MB packaged. It reads
+every `NEEDED` entry of the libraries and plugins, copies in whatever the
+sysroot can supply that `base-libs.txt` does not already list as part of the
+base system, repeats until nothing new turns up, and then deletes the plugins
+whose dependencies still cannot be met. That last step is what drops the Qt
+interface rather than dragging Qt in.
+
+The sysroot is these packages unpacked on top of each other into
+`<sysroot>/boot/system` with Haiku's own `package extract`: `haiku` and
+`haiku_devel` from the Haiku repository, and from HaikuPorts `gcc`,
+`gcc_syslibs`, `gcc_syslibs_devel`, `vlc`, `vlc_devel` plus everything
+`vlc`'s `requires: lib:...` names except qt5 - 43 packages, `a52dec` through
+`zlib`, of which `ffmpeg` is the big one at 9.5 MB. `<sysroot>/base-libs.txt`
+holds one soname per line for the libraries `haiku` and `gcc_syslibs` already
+provide.
+
+It has to sit on a **case-sensitive** filesystem: Haiku ships both
+`<string.h>` and the BString header `<String.h>`, and on a case-insensitive
+volume - which is what macOS formats by default - the first `#include
+<string.h>` picks up BString and nothing compiles. `hdiutil create -fs
+"Case-sensitive APFS"` makes a volume that works.
 
 #### Haiku arm64: FFmpeg
 

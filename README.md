@@ -15,10 +15,9 @@ English · [Italiano](README.it.md) · [日本語](README.ja.md) · [한국어](
 | Linux x86_64: Fedora | build it with one command | the same, plus VLC from RPM Fusion |
 | Haiku x86_64, 32-bit x86 or arm64 | install it with `pkgman` | an internet connection |
 
-VLC never has to be installed by hand. On macOS and Debian-based Linux
-R Television brings its own; on Haiku the media library is either inside the
-package or installed alongside it by `pkgman`. Other Linux distributions link
-the one they ship, because the bundling step can only unpack `.deb` packages.
+VLC never has to be installed anywhere: on macOS, Haiku and Debian-based Linux
+R Television brings its own. Other Linux distributions link the one they ship,
+because the bundling step can only unpack `.deb` packages.
 
 ## Install
 
@@ -84,9 +83,8 @@ own.
 
 ![R Television on Haiku](docs/screenshots/haiku.png)
 
-R Television is packaged for every Haiku architecture, and VLC never has to be
-installed by hand: `pkgman` either finds the media library inside the package
-or installs it alongside.
+R Television is packaged for every Haiku architecture, with its media library
+inside the package, so VLC never has to be installed:
 
 ```sh
 pkgman add-repo https://pkgman.rainygirl.com/$(getarch -p)

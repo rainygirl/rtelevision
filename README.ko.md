@@ -13,9 +13,7 @@
 | Linux x86_64: Debian, Ubuntu, Linux Mint | 명령 한 줄로 빌드 | 인터넷 연결, 비밀번호 한 번 |
 | Haiku x86_64, 32비트 x86, arm64 | `pkgman`으로 설치 | 인터넷 연결 |
 
-어느 시스템에서도 VLC를 직접 설치할 필요가 없습니다. macOS와 Debian 계열
-Linux에서는 R Television이 직접 들고 다니고, Haiku에서는 미디어 라이브러리가
-패키지 안에 들어 있거나 `pkgman`이 함께 설치합니다.
+어느 시스템에서도 VLC를 따로 설치할 필요가 없습니다. R Television이 직접 들고 다닙니다.
 
 ## 설치
 
@@ -64,9 +62,8 @@ Linux Mint 20.3과 Ubuntu 20.04에서 확인했습니다.
 
 ![Haiku의 R Television](docs/screenshots/haiku.png)
 
-R Television은 Haiku의 모든 아키텍처용으로 패키지가 있고, VLC를 직접 설치할
-필요가 없습니다. 미디어 라이브러리는 패키지 안에 들어 있거나 `pkgman`이 함께
-설치합니다.
+R Television은 Haiku의 모든 아키텍처용으로 패키지가 있고, 미디어 라이브러리를
+패키지 안에 담고 있어서 VLC를 따로 설치할 필요가 없습니다.
 
 ```sh
 pkgman add-repo https://pkgman.rainygirl.com/$(getarch -p)

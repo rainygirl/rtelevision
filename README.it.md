@@ -14,9 +14,7 @@ italiano, giapponese o coreano).
 | Linux x86_64: Debian, Ubuntu, Linux Mint | si compila con un solo comando | una connessione a internet e, una volta, la tua password |
 | Haiku x86_64, x86 a 32 bit o arm64 | si installa con `pkgman` | una connessione a internet |
 
-Non serve installare VLC a mano da nessuna parte: su macOS e sulle distribuzioni
-Linux basate su Debian R Television porta il proprio, su Haiku la libreria
-multimediale sta dentro il pacchetto oppure la installa `pkgman` insieme ad esso.
+Non serve installare VLC da nessuna parte: R Television ha il suo.
 
 ## Installazione
 
@@ -70,9 +68,8 @@ Provato su Linux Mint 20.3 e Ubuntu 20.04.
 
 ![R Television su Haiku](docs/screenshots/haiku.png)
 
-R Television è pacchettizzato per ogni architettura di Haiku e VLC non va mai
-installato a mano: `pkgman` trova la libreria multimediale dentro il pacchetto
-oppure la installa insieme ad esso.
+R Television è pacchettizzato per ogni architettura di Haiku e porta la propria
+libreria multimediale dentro il pacchetto, quindi VLC non va mai installato:
 
 ```sh
 pkgman add-repo https://pkgman.rainygirl.com/$(getarch -p)
