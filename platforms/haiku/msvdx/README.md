@@ -29,9 +29,13 @@ step.
 
 ## Firmware
 
-Intel's `msvdx_fw.bin` goes in `~/config/non-packaged/data/firmware/` (or
-`RTV_MSVDX_FIRMWARE`). Its licence does not allow redistribution; it is not
-in this repository or any package.
+Intel's `msvdx_fw.bin` comes with the `msvdx_firmware` package
+(`/boot/system/data/firmware/`), which the R Television package requires. A
+copy in `~/config/non-packaged/data/firmware/` or `RTV_MSVDX_FIRMWARE` takes
+precedence. It is not in this repository. The file is unmodified from Ubuntu's
+`psb-firmware` 0.30, whose `COPYING` is Intel's binary redistribution licence:
+the unmodified binary may be redistributed with that notice and licence, used
+only with the Intel hardware it is for, and not reverse engineered.
 
 ## Building
 

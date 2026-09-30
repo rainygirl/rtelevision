@@ -91,6 +91,11 @@ cd platforms/haiku
 없는 패키지(`gcc`, `haiku_devel`)는 `pkgman`으로 설치하고, 시스템의 다른 부분은
 건드리지 않습니다. 빌드 관련 내용은 [AGENTS.md](AGENTS.md#haiku)(영어)에 있습니다.
 
+Sony VAIO P(인텔 GMA500 칩셋)에서는 x86 패키지가 H.264 채널을 칩셋의 비디오
+디코더로 디코딩합니다. 소프트웨어 디코딩의 절반 정도 CPU만 씁니다. 그 디코더용
+인텔 펌웨어인 `msvdx_firmware`는 `pkgman`이 함께 설치합니다. 다른 기기에는
+영향이 없습니다. `RTV_MSVDX=0`으로 끌 수 있습니다.
+
 ## 제거
 
 macOS:
@@ -130,6 +135,8 @@ MIT이고 [LICENSE](LICENSE)에 있습니다. 함께 들어 있는 VLC와 FFmpeg
 라이선스를 따르며 [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md)에 정리되어 있습니다.
 채널 목록은 [iptv-org/iptv](https://github.com/iptv-org/iptv)의 데이터를 참고하며,
 그 라이선스는 iptv-org의 것을 따릅니다.
+`msvdx_firmware` 패키지의 인텔 GMA500 펌웨어는 인텔 라이선스에 따라 수정 없이
+재배포하며, 라이선스 전문이 함께 설치됩니다.
 
 ## AI 활용 고지
 

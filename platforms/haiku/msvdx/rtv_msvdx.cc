@@ -25,6 +25,9 @@ const char* FirmwarePath() {
       "/boot/home/config/non-packaged/data/firmware/msvdx_fw.bin",
       "/boot/system/non-packaged/data/firmware/msvdx_fw.bin",
       "/boot/home/msvdx/msvdx_fw.bin",
+      // The msvdx_firmware package, system-wide and --home.
+      "/boot/system/data/firmware/msvdx_fw.bin",
+      "/boot/home/config/data/firmware/msvdx_fw.bin",
   };
   const char* env = getenv("RTV_MSVDX_FIRMWARE");
   if (env && access(env, R_OK) == 0)

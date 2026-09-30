@@ -64,11 +64,14 @@ dynamically against libVLC's `libvlccore`, like every other plugin there.
   `psb_H264.c`, marked `HAIKU`.
 - **The userland driver and glue** (`msvdx/hw/msvdx.c`, `msvdx_decode.c`,
   `msvdx/*.c*`, `msvdx/shim/`): this project's own, MIT.
-- **Firmware.** The decoder needs Intel's `msvdx_fw.bin`, whose licence does
-  not allow redistribution. It is **not** in this repository or in any
-  package; the module looks for it in
-  `~/config/non-packaged/data/firmware/` and stays out of the way when it is
-  not there.
+- **Firmware.** The decoder needs Intel's `msvdx_fw.bin`. It is not in this
+  repository; the `msvdx_firmware` package, which R Television requires,
+  carries it unmodified from Ubuntu's `psb-firmware` 0.30 under Intel's binary
+  redistribution licence (in that package, as its `COPYING`: redistribution of
+  the unmodified binary with the notice and licence, use only with the Intel
+  hardware it is for, no reverse engineering). The module finds it in
+  `/boot/system/data/firmware/`, or `~/config/non-packaged/data/firmware/`,
+  and steps aside when there is none.
 
 ## libcurl - macOS, Linux
 

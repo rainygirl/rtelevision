@@ -202,7 +202,12 @@ uninstall:
 	rm -rf "$(INSTALL_DIR)" "$(HOME)/config/settings/deskbar/menu/Applications/$(APP)" \
 	       "$(DATA_DIR)"
 
-$(MSVDX_PLUGIN):
+# The module's own Makefile knows its objects; this rule only has to notice
+# that any of its sources changed, or a stale .so is bundled.
+MSVDX_SOURCES := $(shell find msvdx -type f \( -name '*.c' -o -name '*.cc' -o -name '*.h' \) \
+                   -not -path 'msvdx/build/*' 2>/dev/null) msvdx/Makefile
+
+$(MSVDX_PLUGIN): $(MSVDX_SOURCES)
 	$(MAKE) -C msvdx VLC_INCLUDE=$(abspath $(VLC_VENDOR)/include/vlc) \
 	    VLCCORE=$(abspath $(VLC_VENDOR)/lib/libvlccore.so.9)
 

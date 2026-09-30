@@ -113,6 +113,12 @@ Missing packages (`gcc`, `haiku_devel`) are installed with `pkgman`; nothing
 else on the system is touched. The build notes are in
 [AGENTS.md](AGENTS.md#haiku).
 
+On the Sony VAIO P (Intel GMA500 chipset) the x86 package decodes H.264
+channels in the chipset's video decoder, at about half the CPU that software
+decoding takes. `pkgman` installs `msvdx_firmware`, Intel's firmware for that
+decoder, along with it; other machines are unaffected. `RTV_MSVDX=0` turns it
+off.
+
 ## Uninstall
 
 macOS:
@@ -153,6 +159,8 @@ MIT, see [LICENSE](LICENSE). The bundled VLC and FFmpeg libraries keep their
 own licences, listed in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
 The channel list is taken from [iptv-org/iptv](https://github.com/iptv-org/iptv)
 and follows the iptv-org licence.
+The Intel GMA500 firmware in the `msvdx_firmware` package is redistributed
+unmodified under Intel's licence, which is installed with it.
 
 ## AI disclosure
 

@@ -94,6 +94,12 @@ cd platforms/haiku
 システムのほかの部分には手を触れません。ビルドの詳細は
 [AGENTS.md](AGENTS.md#haiku)(英語)にあります。
 
+Sony VAIO P(Intel GMA500 チップセット)では、x86 パッケージが H.264 の
+チャンネルをチップセットのビデオデコーダーでデコードします。CPU 使用率は
+ソフトウェアデコードの半分ほどです。そのデコーダー用の Intel ファームウェア
+`msvdx_firmware` は `pkgman` が一緒にインストールします。ほかの機種には影響
+しません。`RTV_MSVDX=0` で無効にできます。
+
 ## アンインストール
 
 macOS:
@@ -134,6 +140,8 @@ MIT です([LICENSE](LICENSE))。同梱の VLC と FFmpeg のライブラリは�
 のままで、[THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) にまとめてあります。
 チャンネル一覧は [iptv-org/iptv](https://github.com/iptv-org/iptv) のデータを参考にしており、
 そのライセンスは iptv-org のものに従います。
+`msvdx_firmware` パッケージの Intel GMA500 ファームウェアは、Intel の
+ライセンスに従い無改変で再配布しており、ライセンス全文も一緒にインストールされます。
 
 ## AI 利用について
 
