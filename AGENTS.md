@@ -357,6 +357,35 @@ That writes `third_party/ffmpeg-haiku-arm64/` (about 4.7 MB, LGPL build: no
 `--enable-gpl`, no `--enable-nonfree`). Copy the project to the Haiku machine
 and run `./install.sh`; it picks the FFmpeg backend up by itself.
 
+## GMA500 hardware H.264 on the x86 build (2026-09-30)
+
+`platforms/haiku/msvdx/` builds `libmsvdx_plugin.so`, a libVLC decoder
+module that decodes H.264 on the VAIO P's GMA500 video decoder instead of in
+libavcodec. The Haiku Makefile builds it and copies it into
+`vlc/plugins/codec` when `ARCH` is `BePC` and the vendored VLC has plugin
+headers. Its README has the layout, the licences and the conditions under
+which it steps aside for libavcodec.
+
+Measured with a libVLC harness that plays into a 640x360 RV32 buffer the way
+`VideoView` does: on three test streams (Baseline, Main CABAC at 176x144 and
+at 848x480) every delivered frame hashes identical to libavcodec's with the
+loop filter on, and the 480p stream costs 17% of the machine against 28%.
+
+Two things learned on the way, both now fixed in the shared `hw/msvdx.c`:
+
+- Decoder buffers must not be physically contiguous allocations. An hour
+  after boot no 1 MB contiguous run is left even with 1.5 GB free, and a 720p
+  surface is 1.4 MB. The decoder has its own MMU; buffers are now mapped
+  page by page.
+- Every decoder area must be `B_SHARED_AREA`. libVLC forks for every HTTP
+  stream (posix_spawn of the libproxy helper), and fork makes a non-shared
+  area copy-on-write: the register page turns read-only and the next write
+  to it panics the kernel in `X86VMTranslationMapPAE::Map`. It did, twice.
+  `share_area()` in `hw/msvdx.c` clones each area once, which sets the flag.
+
+Measured in the app on NHK General (960x540 HLS): decoded by `msvdx`, 25
+fps, 22% of the machine against 53% with libavcodec over the same 60 s.
+
 ## Build outputs and install locations
 
 | Platform | Built | Installed | User data |

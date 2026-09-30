@@ -48,6 +48,28 @@ The playback backend where no libVLC exists, decoded through
   links Haiku's own `libssl.so.3` / `libcrypto.so.3`. OpenSSL 3 is Apache-2.0
   and is not shipped by this project.
 
+## GMA500 hardware H.264 module - Haiku x86
+
+`libmsvdx_plugin.so`, a libVLC decoder module built from
+`platforms/haiku/msvdx/` and installed into `vlc/plugins/codec`. It links
+dynamically against libVLC's `libvlccore`, like every other plugin there.
+
+- **Chromium's H.264 parser and decoder** (`msvdx/chromium/`): unmodified
+  copies of `media/video/h264_*` and `media/gpu/h264_*` from Chromium
+  114.0.5735.199. **BSD-3-Clause**, full text in
+  [platforms/haiku/msvdx/chromium/LICENSE](platforms/haiku/msvdx/chromium/LICENSE).
+- **psb_video** (`msvdx/hw/psb/`, `msvdx/hw/hwdefs/`): the H.264 command
+  builder of Intel's GMA500 VA-API driver, from its first open release (2010).
+  **MIT**; the notice is at the top of each file. One line changed in
+  `psb_H264.c`, marked `HAIKU`.
+- **The userland driver and glue** (`msvdx/hw/msvdx.c`, `msvdx_decode.c`,
+  `msvdx/*.c*`, `msvdx/shim/`): this project's own, MIT.
+- **Firmware.** The decoder needs Intel's `msvdx_fw.bin`, whose licence does
+  not allow redistribution. It is **not** in this repository or in any
+  package; the module looks for it in
+  `~/config/non-packaged/data/firmware/` and stays out of the way when it is
+  not there.
+
 ## libcurl - macOS, Linux
 
 HTTP client for the playlist (`shared/core/CurlHttpClient.cpp`). Linked against
