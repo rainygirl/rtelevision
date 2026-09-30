@@ -13,12 +13,12 @@ English · [Italiano](README.it.md) · [日本語](README.ja.md) · [한국어](
 | macOS 11 or newer, Apple Silicon or Intel | download the app | nothing |
 | Linux x86_64: Debian, Ubuntu, Linux Mint | build it with one command | an internet connection, and your password once |
 | Linux x86_64: Fedora | build it with one command | the same, plus VLC from RPM Fusion |
-| Haiku x86_64 | build it with one command | an internet connection |
-| Haiku arm64 | build it with one command | FFmpeg prepared first (see [Haiku](#haiku)) |
+| Haiku x86_64, 32-bit x86 or arm64 | install it with `pkgman` | an internet connection |
 
-On macOS, Haiku and Debian-based Linux, VLC does not need to be installed
-anywhere: R Television brings its own. Other Linux distributions link the one
-they ship, because the bundling step can only unpack `.deb` packages.
+VLC never has to be installed by hand. On macOS and Debian-based Linux
+R Television brings its own; on Haiku the media library is either inside the
+package or installed alongside it by `pkgman`. Other Linux distributions link
+the one they ship, because the bundling step can only unpack `.deb` packages.
 
 ## Install
 
@@ -84,28 +84,36 @@ own.
 
 ![R Television on Haiku](docs/screenshots/haiku.png)
 
-1. Download this project as a ZIP file and unpack it.
-2. Open Terminal in the unpacked folder and run:
-
-   ```sh
-   cd platforms/haiku
-   ./install.sh
-   ```
-
-   Missing packages (`gcc`, `haiku_devel`) are installed with `pkgman`; nothing
-   else on the system is touched.
-3. Start **RTelevision** from **Deskbar > Applications**.
-
-On **arm64** (RENKU) R Television comes ready-built, with FFmpeg inside the
-package, from pkgman.rainygirl.com:
+R Television is packaged for every Haiku architecture, and VLC never has to be
+installed by hand: `pkgman` either finds the media library inside the package
+or installs it alongside.
 
 ```sh
+pkgman add-repo https://pkgman.rainygirl.com/$(getarch -p)
 pkgman install rtelevision
 ```
 
-The RENKU arm64 image already has that repository; elsewhere add it first with
-`pkgman add-repo https://pkgman.rainygirl.com/arm64`. To build it yourself,
-see [AGENTS.md](AGENTS.md#haiku-arm64-ffmpeg).
+On the 32-bit x86_gcc2 image the package is called `rtelevision_x86`, because
+the application is built for the secondary architecture:
+
+```sh
+pkgman install rtelevision_x86
+```
+
+Then start **R Television** from **Deskbar > Applications**. The RENKU arm64
+image already carries that repository.
+
+To build it from source instead, download this project as a ZIP file, unpack
+it, open Terminal in the unpacked folder and run:
+
+```sh
+cd platforms/haiku
+./install.sh
+```
+
+Missing packages (`gcc`, `haiku_devel`) are installed with `pkgman`; nothing
+else on the system is touched. The build notes are in
+[AGENTS.md](AGENTS.md#haiku).
 
 ## Uninstall
 
@@ -123,6 +131,15 @@ cd platforms/linux && make uninstall
 ```
 
 Haiku:
+
+Installed from the repository:
+
+```sh
+pkgman uninstall rtelevision        # rtelevision_x86 on the x86_gcc2 image
+rm -rf ~/config/settings/RTelevision
+```
+
+Built from source:
 
 ```sh
 rm -rf ~/config/non-packaged/apps/RTelevision ~/config/settings/deskbar/menu/Applications/RTelevision

@@ -11,10 +11,11 @@
 |---|---|---|
 | macOS 11 以降(Apple Silicon または Intel) | アプリをダウンロード | なし |
 | Linux x86_64: Debian、Ubuntu、Linux Mint | コマンド一つでビルド | インターネット接続と、一度だけパスワード |
-| Haiku x86_64 | コマンド一つでビルド | インターネット接続 |
-| Haiku arm64 | コマンド一つでビルド | 事前に用意した FFmpeg([Haiku](#haiku) を参照) |
+| Haiku x86_64、32 ビット x86、arm64 | `pkgman` でインストール | インターネット接続 |
 
-どの環境でも VLC をインストールする必要はありません。R Television が自前で持っています。
+どの環境でも VLC を自分でインストールする必要はありません。macOS と Debian 系
+Linux では R Television が自前で持っており、Haiku ではメディアライブラリが
+パッケージの中にあるか、`pkgman` が一緒にインストールします。
 
 ## インストール
 
@@ -65,28 +66,36 @@ Linux Mint 20.3 と Ubuntu 20.04 で確認しています。
 
 ![Haiku で動く R Television](docs/screenshots/haiku.png)
 
-1. このプロジェクトを ZIP ファイルでダウンロードして展開します。
-2. 展開したフォルダでターミナルを開き、次を実行します。
-
-   ```sh
-   cd platforms/haiku
-   ./install.sh
-   ```
-
-   足りないパッケージ(`gcc`、`haiku_devel`)は `pkgman` でインストールします。
-   システムのほかの部分には手を触れません。
-3. **Deskbar > Applications** から **RTelevision** を起動します。
-
-**arm64**(RENKU)では、FFmpeg を同梱したビルド済みパッケージを
-pkgman.rainygirl.com から導入できます。
+R Television は Haiku のすべてのアーキテクチャ向けにパッケージがあり、VLC を
+自分で入れる必要はありません。メディアライブラリはパッケージの中にあるか、
+`pkgman` が一緒にインストールします。
 
 ```sh
+pkgman add-repo https://pkgman.rainygirl.com/$(getarch -p)
 pkgman install rtelevision
 ```
 
-RENKU arm64 イメージにはこのリポジトリが登録済みです。他の環境ではまず
-`pkgman add-repo https://pkgman.rainygirl.com/arm64` で追加してください。自分で
-ビルドする手順は [AGENTS.md](AGENTS.md#haiku-arm64-ffmpeg)(英語)にあります。
+32 ビットの x86_gcc2 イメージではアプリがセカンダリアーキテクチャでビルドされる
+ため、パッケージ名は `rtelevision_x86` です。
+
+```sh
+pkgman install rtelevision_x86
+```
+
+そのあと **Deskbar > Applications** から **R Television** を起動します。RENKU
+arm64 イメージにはこのリポジトリが登録済みです。
+
+自分でビルドする場合は、このプロジェクトを ZIP ファイルでダウンロードして展開し、
+そのフォルダでターミナルを開いて次を実行します。
+
+```sh
+cd platforms/haiku
+./install.sh
+```
+
+足りないパッケージ(`gcc`、`haiku_devel`)は `pkgman` でインストールします。
+システムのほかの部分には手を触れません。ビルドの詳細は
+[AGENTS.md](AGENTS.md#haiku)(英語)にあります。
 
 ## アンインストール
 
@@ -104,6 +113,15 @@ cd platforms/linux && make uninstall
 ```
 
 Haiku:
+
+リポジトリから入れた場合:
+
+```sh
+pkgman uninstall rtelevision        # rtelevision_x86 on the x86_gcc2 image
+rm -rf ~/config/settings/RTelevision
+```
+
+自分でビルドした場合:
 
 ```sh
 rm -rf ~/config/non-packaged/apps/RTelevision ~/config/settings/deskbar/menu/Applications/RTelevision

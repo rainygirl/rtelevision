@@ -11,10 +11,11 @@
 |---|---|---|
 | macOS 11 이상, Apple Silicon 또는 Intel | 앱 다운로드 | 없음 |
 | Linux x86_64: Debian, Ubuntu, Linux Mint | 명령 한 줄로 빌드 | 인터넷 연결, 비밀번호 한 번 |
-| Haiku x86_64 | 명령 한 줄로 빌드 | 인터넷 연결 |
-| Haiku arm64 | 명령 한 줄로 빌드 | 미리 준비한 FFmpeg([Haiku](#haiku) 참고) |
+| Haiku x86_64, 32비트 x86, arm64 | `pkgman`으로 설치 | 인터넷 연결 |
 
-어느 시스템에서도 VLC를 따로 설치할 필요가 없습니다. R Television이 직접 들고 다닙니다.
+어느 시스템에서도 VLC를 직접 설치할 필요가 없습니다. macOS와 Debian 계열
+Linux에서는 R Television이 직접 들고 다니고, Haiku에서는 미디어 라이브러리가
+패키지 안에 들어 있거나 `pkgman`이 함께 설치합니다.
 
 ## 설치
 
@@ -63,28 +64,35 @@ Linux Mint 20.3과 Ubuntu 20.04에서 확인했습니다.
 
 ![Haiku의 R Television](docs/screenshots/haiku.png)
 
-1. 이 프로젝트를 ZIP 파일로 다운로드해 압축을 풉니다.
-2. 압축을 푼 폴더에서 터미널을 열고 다음을 실행합니다.
-
-   ```sh
-   cd platforms/haiku
-   ./install.sh
-   ```
-
-   없는 패키지(`gcc`, `haiku_devel`)는 `pkgman`으로 설치하고, 시스템의 다른 부분은
-   건드리지 않습니다.
-3. **Deskbar > Applications**에서 **RTelevision**을 실행합니다.
-
-**arm64**(RENKU)에서는 FFmpeg를 함께 담아 미리 빌드한 패키지를
-pkgman.rainygirl.com에서 설치할 수 있습니다.
+R Television은 Haiku의 모든 아키텍처용으로 패키지가 있고, VLC를 직접 설치할
+필요가 없습니다. 미디어 라이브러리는 패키지 안에 들어 있거나 `pkgman`이 함께
+설치합니다.
 
 ```sh
+pkgman add-repo https://pkgman.rainygirl.com/$(getarch -p)
 pkgman install rtelevision
 ```
 
-RENKU arm64 이미지에는 이 저장소가 이미 등록돼 있습니다. 다른 시스템에서는 먼저
-`pkgman add-repo https://pkgman.rainygirl.com/arm64`로 추가하세요. 직접 빌드하는
-방법은 [AGENTS.md](AGENTS.md#haiku-arm64-ffmpeg)(영어)에 있습니다.
+32비트 x86_gcc2 이미지에서는 앱이 보조 아키텍처로 빌드되므로 패키지 이름이
+`rtelevision_x86`입니다.
+
+```sh
+pkgman install rtelevision_x86
+```
+
+그다음 **Deskbar > Applications**에서 **R Television**을 실행합니다. RENKU arm64
+이미지에는 이 저장소가 이미 등록돼 있습니다.
+
+직접 빌드하려면 이 프로젝트를 ZIP 파일로 받아 압축을 푼 뒤, 그 폴더에서 터미널을
+열고 다음을 실행합니다.
+
+```sh
+cd platforms/haiku
+./install.sh
+```
+
+없는 패키지(`gcc`, `haiku_devel`)는 `pkgman`으로 설치하고, 시스템의 다른 부분은
+건드리지 않습니다. 빌드 관련 내용은 [AGENTS.md](AGENTS.md#haiku)(영어)에 있습니다.
 
 ## 제거
 
@@ -102,6 +110,15 @@ cd platforms/linux && make uninstall
 ```
 
 Haiku:
+
+저장소에서 설치한 경우:
+
+```sh
+pkgman uninstall rtelevision        # rtelevision_x86 on the x86_gcc2 image
+rm -rf ~/config/settings/RTelevision
+```
+
+직접 빌드한 경우:
 
 ```sh
 rm -rf ~/config/non-packaged/apps/RTelevision ~/config/settings/deskbar/menu/Applications/RTelevision

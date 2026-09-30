@@ -29,12 +29,14 @@ One portable C++17 core, one native front end per platform:
 |---|---|---|---|
 | macOS arm64 / x86_64 | Cocoa (Objective-C++) | libVLC 3.0.23 | yes, 343 plugins |
 | Linux x86_64 | GTK3 | libVLC 3.0.9 from the distribution | yes, 353 plugins |
-| Haiku x86_64 / x86 | BeAPI | libVLC 3.0.23 | yes, unpacked from HaikuPorts |
+| Haiku x86_64 | BeAPI | libVLC 3.0.23 | no, HaikuPorts `vlc` is a dependency |
+| Haiku x86 (x86_gcc2 hybrid) | BeAPI | libVLC 3.0.23 | yes, unpacked from HaikuPorts |
 | Haiku arm64 | BeAPI | FFmpeg 6.1.2 | yes, cross-built |
 | Mac OS X 10.4 PowerPC | Cocoa (Objective-C) | libVLC 0.9.10 | yes, from the PowerPC VLC |
 
-VLC never has to be installed by the user; every build carries its own media
-library.
+VLC never has to be installed by the user by hand. Every build but the Haiku
+x86_64 one carries its own media library; there HaikuPorts publishes `vlc`, so
+the package requires it and `pkgman` installs it alongside.
 
 ## Repository layout
 
@@ -265,6 +267,67 @@ make cli                     # no BeAPI UI needed
 On x86_64 `fetch-libvlc.sh` asks `pkgman` what it would install (answering no)
 and unpacks the `.hpkg` files with `package extract` instead.
 
+#### The .hpkg for pkgman.rainygirl.com
+
+The published packages are built by `recipes/rtelevision.recipe` in the
+`pkgman-repo` project, the same harness as the other R\* applications: it
+writes the `.PackageInfo`, runs `package create`, and `scripts/make-repo.sh`
+and `scripts/deploy.sh` index and publish the result. This repository holds
+only what the recipe starts from - the ordinary `make` build, and the two
+cross-build scripts - so there is one description of the package rather than
+two that can drift apart.
+
+Each architecture starts from a different place, because what HaikuPorts
+publishes for it differs:
+
+| Repository | Package | Built | Media library |
+|---|---|---|---|
+| `x86_gcc2` | `rtelevision_x86`, requires `haiku_x86` | on the machine, `setarch x86 make` | bundled, from `third_party/vlc-haiku-BePC` |
+| `x86_64` | `rtelevision`, requires `haiku` and `lib:libvlc` | cross, `platforms/haiku/cross-x86_64.sh` | HaikuPorts `vlc`, which `pkgman` installs alongside |
+| `arm64` | `rtelevision`, requires `haiku` and `lib:libssl` | cross, `pkgman-repo` `scripts/cross-arm64.sh` | bundled, from `third_party/ffmpeg-haiku-arm64` |
+
+The `_x86` name on the hybrid is the HaikuPorts convention for a package built
+against the secondary architecture, the same as `vlc_x86`; the core is C++17,
+which the gcc2 primary compiler cannot build. That image has no `vlc` package
+of its own, so there libVLC travels inside the package, and the layout is the
+one `make install` produces - `lib/` beside the binary, because the runtime
+loader looks there and the VLC plugins, which carry no rpath, find
+`libdvbpsi` and the rest the same way.
+
+```
+apps/RTelevision/{RTelevision, lib/, vlc/plugins/, seed-playlist.m3u}
+data/deskbar/menu/Applications/R Television -> ../../../../apps/...
+documentation/packages/<package name>/{LICENSE, THIRD-PARTY-NOTICES.md, READMEs}
+.PackageInfo
+```
+
+```sh
+scripts/build.sh rtelevision              # on a Haiku machine of that architecture
+scripts/build.sh --arch x86_64 rtelevision  # a cross-built dist/ only needs packaging
+scripts/make-repo.sh x86_gcc2             # repo, repo.info, repo.sha256, packages.txt
+scripts/deploy.sh x86_gcc2                # from the workstation, to the web server
+```
+
+#### Haiku x86_64: cross-compiling with clang
+
+No Haiku x86_64 machine has to exist to publish for it. `cross-x86_64.sh`
+builds `dist/x86_64/RTelevision` on the workstation with clang, whose
+`x86_64-unknown-haiku` target means no cross toolchain has to be built; only
+the C runtime startup files come from Haiku's gcc, through `-B`.
+
+```sh
+RTV_HAIKU_SYSROOT=/Volumes/HaikuX64/sysroot sh platforms/haiku/cross-x86_64.sh
+```
+
+The sysroot is `haiku` and `haiku_devel` from the Haiku repository plus `gcc`,
+`gcc_syslibs`, `gcc_syslibs_devel`, `vlc` and `vlc_devel` from HaikuPorts,
+unpacked on top of each other into `<sysroot>/boot/system` with Haiku's own
+`package extract`. It has to sit on a **case-sensitive** filesystem: Haiku
+ships both `<string.h>` and the BString header `<String.h>`, and on a
+case-insensitive volume - which is what macOS formats by default - the first
+`#include <string.h>` picks up BString and nothing compiles. `hdiutil create
+-fs "Case-sensitive APFS"` makes a volume that works.
+
 #### Haiku arm64: FFmpeg
 
 HaikuPorts publishes neither `vlc` nor `ffmpeg` for arm64, so FFmpeg is
@@ -285,7 +348,7 @@ and run `./install.sh`; it picks the FFmpeg backend up by itself.
 | macOS | `platforms/macos/build/<archs>/R Television.app` (about 193 MB, mostly VLC plugins) | `/Applications/R Television.app` | `~/Library/Application Support/RTelevision/` |
 | Linux | `platforms/linux/build/` | `~/.local/lib/RTelevision/`, `~/.local/bin/r-television`, `.desktop` entry and icon under `~/.local/share` | `~/.local/share/RTelevision/` |
 | Mac OS X 10.4 PowerPC | `platforms/macos-ppc/build/` | `/Applications/R Television.app` (about 45 MB) | `~/Library/Application Support/RTelevision/` |
-| Haiku | `platforms/haiku/build/` | `~/config/non-packaged/apps/RTelevision/` holding the binary, `lib/` with the bundled `.so` files and `vlc/plugins`; snapshot in `~/config/non-packaged/data/RTelevision/`, Deskbar link | `~/config/settings/RTelevision/` |
+| Haiku | `platforms/haiku/build/` | from `pkgman`: `/boot/system/apps/RTelevision/`. From source: `~/config/non-packaged/apps/RTelevision/` holding the binary, `lib/` with the bundled `.so` files and `vlc/plugins`; snapshot in `~/config/non-packaged/data/RTelevision/`, Deskbar link | `~/config/settings/RTelevision/` |
 
 Every bundle also carries `LICENSE`, `THIRD-PARTY-NOTICES.md` and `licenses/`.
 `~/config/apps` on Haiku is read-only packagefs, hence `non-packaged`.
