@@ -1,4 +1,4 @@
-# R Television - Haiku front end (BeAPI)
+# R Television - RenkuOS front end (BeAPI)
 #
 #   make deps       vendor libVLC into third_party (installs nothing)
 #   make            build build/RTelevision
@@ -47,7 +47,7 @@ FF_VENDOR   := ../../third_party/ffmpeg-haiku-$(ARCH)
 ifneq ($(wildcard $(VLC_VENDOR)/include/vlc/vlc.h),)
   VLC ?= 1
   VLC_CFLAGS := -I$(VLC_VENDOR)/include
-  # $$ORIGIN: Haiku's runtime loader does not search the binary's own directory
+  # $$ORIGIN: RenkuOS's runtime loader does not search the binary's own directory
   # on its own, so the bundled libvlc is found through an rpath instead.
   # libvlccore is named explicitly so it becomes a direct dependency of the
   # binary: an rpath does not carry over to a dependency's own dependencies.
@@ -70,7 +70,7 @@ endif
 FFMPEG ?= 0
 
 # HTTP BACKEND
-# Same story for curl_devel. Without it the app talks HTTP through Haiku's own
+# Same story for curl_devel. Without it the app talks HTTP through RenkuOS's own
 # network services (libnetservices), so the offline cache still refreshes.
 CURL_HEADER := /boot/system/develop/headers/curl/curl.h
 CURL ?= $(if $(wildcard $(CURL_HEADER)),1,0)
@@ -121,7 +121,7 @@ all: $(BUILD)/$(APP)
 
 backend:
 	@echo "media backend: $(if $(filter 1,$(VLC)),libVLC,$(if $(filter 1,$(FFMPEG)),FFmpeg,none))"
-	@echo "http backend : $(if $(filter 1,$(CURL)),libcurl,Haiku netservices)"
+	@echo "http backend : $(if $(filter 1,$(CURL)),libcurl,RenkuOS netservices)"
 
 $(BUILD)/obj/%.o: %.cpp
 	@mkdir -p $(dir $@)

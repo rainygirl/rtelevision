@@ -1,7 +1,7 @@
-// Haiku video surface.
+// RenkuOS video surface.
 //
 // libVLC 3 has no BView handle setter (no counterpart to set_nsobject), so the
-// Haiku front end takes the software path: the backend decodes into a BGRA
+// RenkuOS front end takes the software path: the backend decodes into a BGRA
 // buffer through tv::VideoFrameSink and this view blits it.
 #pragma once
 

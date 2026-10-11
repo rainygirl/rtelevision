@@ -1,5 +1,5 @@
 #!/bin/sh
-# Builds and installs RTelevision on Haiku.
+# Builds and installs RTelevision on RenkuOS.
 #
 #   ./install.sh          install dependencies (if any), build, install
 #   ./install.sh --deps   only install the packages
@@ -67,7 +67,7 @@ if [ $VLC = 1 ]; then backend=libVLC
 elif [ $FFMPEG = 1 ]; then backend=FFmpeg
 else backend="none"; fi
 echo "media backend: $backend"
-echo "http backend : $([ $CURL = 1 ] && echo libcurl || echo 'Haiku netservices')"
+echo "http backend : $([ $CURL = 1 ] && echo libcurl || echo 'RenkuOS netservices')"
 
 [ "${1:-}" = "--deps" ] && exit 0
 

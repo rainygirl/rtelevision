@@ -11,7 +11,7 @@
 |---|---|---|
 | macOS 11 以降(Apple Silicon または Intel) | アプリをダウンロード | なし |
 | Linux x86_64: Debian、Ubuntu、Linux Mint | コマンド一つでビルド | インターネット接続と、一度だけパスワード |
-| Haiku x86_64、32 ビット x86、arm64 | `pkgman` でインストール | インターネット接続 |
+| RenkuOS x86_64、32 ビット x86、arm64 | `pkgman` でインストール | インターネット接続 |
 
 どの環境でも VLC をインストールする必要はありません。R Television が自前で持っています。
 
@@ -60,11 +60,11 @@
 
 Linux Mint 20.3 と Ubuntu 20.04 で確認しています。
 
-### Haiku
+### RenkuOS
 
-![Haiku で動く R Television](docs/screenshots/haiku.png)
+![RenkuOS で動く R Television](docs/screenshots/haiku.png)
 
-R Television は Haiku のすべてのアーキテクチャ向けにパッケージがあり、メディア
+R Television は RenkuOS のすべてのアーキテクチャ向けにパッケージがあり、メディア
 ライブラリを同梱しているので VLC を別に入れる必要はありません。
 
 ```sh
@@ -86,13 +86,13 @@ arm64 イメージにはこのリポジトリが登録済みです。
 そのフォルダでターミナルを開いて次を実行します。
 
 ```sh
-cd platforms/haiku
+cd platforms/renkuos
 ./install.sh
 ```
 
 足りないパッケージ(`gcc`、`haiku_devel`)は `pkgman` でインストールします。
 システムのほかの部分には手を触れません。ビルドの詳細は
-[AGENTS.md](AGENTS.md#haiku)(英語)にあります。
+[AGENTS.md](AGENTS.md#renkuos)(英語)にあります。
 
 Sony VAIO P(Intel GMA500 チップセット)では、x86 パッケージが H.264 の
 チャンネルをチップセットのビデオデコーダーでデコードします。CPU 使用率は
@@ -115,7 +115,7 @@ Linux(プロジェクトのフォルダで):
 cd platforms/linux && make uninstall
 ```
 
-Haiku:
+RenkuOS:
 
 リポジトリから入れた場合:
 
@@ -131,7 +131,7 @@ rm -rf ~/config/non-packaged/apps/RTelevision ~/config/settings/deskbar/menu/App
 rm -rf ~/config/non-packaged/data/RTelevision ~/config/settings/RTelevision
 ```
 
-macOS の 2 行目と Haiku の `settings` フォルダには、チャンネル一覧のキャッシュと
+macOS の 2 行目と RenkuOS の `settings` フォルダには、チャンネル一覧のキャッシュと
 お気に入りが入っています。
 
 ## ライセンス

@@ -1,4 +1,4 @@
-// Haiku entry point.
+// RenkuOS entry point.
 #include <Application.h>
 #include <LocaleRoster.h>
 #include <Message.h>
@@ -16,7 +16,7 @@
 
 namespace {
 
-// The directory the binary sits in. Haiku's runtime loader also searches it for
+// The directory the binary sits in. RenkuOS's runtime loader also searches it for
 // libraries, which is how the bundled libvlc.so is found without an rpath.
 std::string executableDir() {
     image_info info;

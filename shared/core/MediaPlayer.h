@@ -1,6 +1,6 @@
 // Backend-neutral playback interface.
 //
-// macOS and Haiku both get libVLC today (VlcMediaPlayer). If a future Haiku
+// macOS and RenkuOS both get libVLC today (VlcMediaPlayer). If a future RenkuOS
 // build has to fall back to media_kit, only a sibling implementation of this
 // interface is needed - no UI or core change.
 #pragma once
@@ -42,7 +42,7 @@ public:
 };
 
 // Software video output. Used by platforms whose native view handle libVLC
-// cannot take directly (Haiku's BView); the backend decodes into a buffer the
+// cannot take directly (RenkuOS's BView); the backend decodes into a buffer the
 // front end owns and blits itself.
 class VideoFrameSink {
 public:

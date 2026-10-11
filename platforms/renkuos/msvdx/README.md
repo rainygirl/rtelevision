@@ -39,7 +39,7 @@ only with the Intel hardware it is for, and not reverse engineered.
 
 ## Building
 
-`make` in `platforms/haiku` builds and bundles it on an x86_gcc2 machine
+`make` in `platforms/renkuos` builds and bundles it on an x86_gcc2 machine
 (`setarch x86 make`). By hand:
 
     setarch x86 make VLC_INCLUDE=<dir with vlc/plugins> VLCCORE=<libvlccore.so.9>

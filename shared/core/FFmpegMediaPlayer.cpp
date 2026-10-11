@@ -1,6 +1,6 @@
 // Playback backend built directly on FFmpeg.
 //
-// Used where libVLC does not exist - Haiku/arm64, whose package repository has
+// Used where libVLC does not exist - RenkuOS/arm64, whose package repository has
 // neither vlc nor ffmpeg prebuilt, so ffmpeg is cross-compiled for it instead.
 // Video frames are converted to BGRA for the front end's VideoFrameSink; audio
 // is resampled to interleaved 16-bit and pushed into its AudioSink. When there

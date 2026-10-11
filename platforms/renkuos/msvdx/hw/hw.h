@@ -1,7 +1,7 @@
 /* The psb_video hardware definitions, included the way psb_cmdbuf.c does.
  * img_defs.h refuses any OS it does not know; it only needs the GNU C
  * branch, which it keys on __linux__. Defined for these headers only, after
- * the Haiku system headers are already in. */
+ * the RenkuOS system headers are already in. */
 #ifndef MSVDX_HW_H
 #define MSVDX_HW_H
 

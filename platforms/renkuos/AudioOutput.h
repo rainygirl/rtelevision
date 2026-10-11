@@ -1,4 +1,4 @@
-// Haiku audio output for the FFmpeg backend.
+// RenkuOS audio output for the FFmpeg backend.
 //
 // BSoundPlayer pulls samples through a callback, so the decoder writes into a
 // ring buffer and the callback drains it. queueAudio() blocks while the buffer

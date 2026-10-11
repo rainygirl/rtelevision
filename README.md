@@ -13,9 +13,9 @@ English · [Italiano](README.it.md) · [日本語](README.ja.md) · [한국어](
 | macOS 11 or newer, Apple Silicon or Intel | download the app | nothing |
 | Linux x86_64: Debian, Ubuntu, Linux Mint | build it with one command | an internet connection, and your password once |
 | Linux x86_64: Fedora | build it with one command | the same, plus VLC from RPM Fusion |
-| Haiku x86_64, 32-bit x86 or arm64 | install it with `pkgman` | an internet connection |
+| RenkuOS x86_64, 32-bit x86 or arm64 | install it with `pkgman` | an internet connection |
 
-VLC never has to be installed anywhere: on macOS, Haiku and Debian-based Linux
+VLC never has to be installed anywhere: on macOS, RenkuOS and Debian-based Linux
 R Television brings its own. Other Linux distributions link the one they ship,
 because the bundling step can only unpack `.deb` packages.
 
@@ -79,11 +79,11 @@ XWayland, because libVLC 3 can only embed video into an X11 window. Set
 `GDK_BACKEND` yourself to override that; video then opens in a window of its
 own.
 
-### Haiku
+### RenkuOS
 
-![R Television on Haiku](docs/screenshots/haiku.png)
+![R Television on RenkuOS](docs/screenshots/haiku.png)
 
-R Television is packaged for every Haiku architecture, with its media library
+R Television is packaged for every RenkuOS architecture, with its media library
 inside the package, so VLC never has to be installed:
 
 ```sh
@@ -105,13 +105,13 @@ To build it from source instead, download this project as a ZIP file, unpack
 it, open Terminal in the unpacked folder and run:
 
 ```sh
-cd platforms/haiku
+cd platforms/renkuos
 ./install.sh
 ```
 
 Missing packages (`gcc`, `haiku_devel`) are installed with `pkgman`; nothing
 else on the system is touched. The build notes are in
-[AGENTS.md](AGENTS.md#haiku).
+[AGENTS.md](AGENTS.md#renkuos).
 
 On the Sony VAIO P (Intel GMA500 chipset) the x86 package decodes H.264
 channels in the chipset's video decoder, at about half the CPU that software
@@ -134,7 +134,7 @@ Linux (from the project folder):
 cd platforms/linux && make uninstall
 ```
 
-Haiku:
+RenkuOS:
 
 Installed from the repository:
 
@@ -150,7 +150,7 @@ rm -rf ~/config/non-packaged/apps/RTelevision ~/config/settings/deskbar/menu/App
 rm -rf ~/config/non-packaged/data/RTelevision ~/config/settings/RTelevision
 ```
 
-The second macOS line and the Haiku `settings` folder hold the channel list
+The second macOS line and the RenkuOS `settings` folder hold the channel list
 cache and your favorites.
 
 ## License

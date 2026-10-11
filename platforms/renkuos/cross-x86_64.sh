@@ -1,5 +1,5 @@
 #!/bin/sh
-# Cross-compile the Haiku x86_64 front end on a workstation, into dist/x86_64/,
+# Cross-compile the RenkuOS x86_64 front end on a workstation, into dist/x86_64/,
 # and put the libVLC it needs beside it. The package that comes out of this
 # requires nothing but "haiku": HaikuPorts does publish vlc for x86_64, but
 # depending on it drags in qt5 and the GStreamer stack - several hundred
@@ -7,10 +7,10 @@
 # pruned libVLC instead costs about 55 MB unpacked and keeps the package
 # self-contained, the way the x86_gcc2 one already is.
 #
-#   RTV_HAIKU_SYSROOT=/Volumes/HaikuX64/sysroot sh platforms/haiku/cross-x86_64.sh
+#   RTV_HAIKU_SYSROOT=/Volumes/HaikuX64/sysroot sh platforms/renkuos/cross-x86_64.sh
 #
 # The sysroot is these Haiku packages unpacked on top of each other into
-# <sysroot>/boot/system with Haiku's own `package extract`:
+# <sysroot>/boot/system with RenkuOS's own `package extract`:
 #
 #   from .../haiku/master/x86_64/current/packages/
 #       haiku, haiku_devel
@@ -23,7 +23,7 @@
 # packages already provide, one soname per line. Anything else a plugin asks
 # for has to travel in the package, and this script works out which.
 #
-# It has to sit on a CASE-SENSITIVE filesystem. Haiku ships both <string.h> and
+# It has to sit on a CASE-SENSITIVE filesystem. RenkuOS ships both <string.h> and
 # the BString header <String.h>, and on a case-insensitive volume - which is
 # what macOS formats by default - the first include of <string.h> picks up
 # BString instead and nothing compiles. `hdiutil create -fs "Case-sensitive
@@ -34,7 +34,7 @@
 # from gcc, through -B.
 set -eu
 
-S="${RTV_HAIKU_SYSROOT:?set RTV_HAIKU_SYSROOT to the unpacked Haiku x86_64 sysroot}"
+S="${RTV_HAIKU_SYSROOT:?set RTV_HAIKU_SYSROOT to the unpacked RenkuOS x86_64 sysroot}"
 H="$S/boot/system/develop/headers"
 SYSLIB="$S/boot/system/lib"
 GCC_LIB="$S/boot/system/develop/tools/lib/gcc/x86_64-unknown-haiku/13.3.0"
@@ -58,26 +58,26 @@ rm -rf "$OUT"; mkdir -p "$WORK" "$OUT/lib" "$OUT/vlc"
 TARGET="--target=x86_64-unknown-haiku --sysroot=$S"
 CXXFLAGS="-std=c++17 -O2 -Wall -Wextra -Wno-unused-parameter
 	-I$H/c++ -I$H/c++/x86_64-unknown-haiku -I$H/private/netservices
-	-Ishared -Iplatforms/haiku"
+	-Ishared -Iplatforms/renkuos"
 
-# The same files platforms/haiku/Makefile compiles with CORE_SRC_VLC and
-# CORE_SRC_HTTP_HAIKU: libVLC for playback, Haiku's own network services for
+# The same files platforms/renkuos/Makefile compiles with CORE_SRC_VLC and
+# CORE_SRC_HTTP_HAIKU: libVLC for playback, RenkuOS's own network services for
 # HTTP, so the package needs no libcurl either.
 SRC="shared/core/StringUtil.cpp shared/core/Aes128.cpp shared/core/Country.cpp
 shared/core/Strings.cpp shared/core/M3UParser.cpp shared/core/Paths.cpp
 shared/core/PlaylistStore.cpp shared/core/ChannelIndex.cpp shared/core/Favorites.cpp
 shared/core/MediaPlayer.cpp shared/core/HlsRelay.cpp shared/core/RelayedMediaPlayer.cpp
 shared/core/AppController.cpp shared/core/VlcMediaPlayer.cpp shared/core/HaikuHttpClient.cpp
-platforms/haiku/main.cpp platforms/haiku/MainWindow.cpp platforms/haiku/VideoView.cpp
-platforms/haiku/Icons.cpp platforms/haiku/AudioOutput.cpp platforms/haiku/ResolverGuard.cpp
-platforms/haiku/SocketGuard.cpp"
+platforms/renkuos/main.cpp platforms/renkuos/MainWindow.cpp platforms/renkuos/VideoView.cpp
+platforms/renkuos/Icons.cpp platforms/renkuos/AudioOutput.cpp platforms/renkuos/ResolverGuard.cpp
+platforms/renkuos/SocketGuard.cpp"
 
 for f in $SRC; do
 	echo "  CXX $f"
 	$CXX $TARGET $CXXFLAGS -c "$f" -o "$WORK/$(basename "$f" .cpp).o"
 done
 
-# $ORIGIN/lib, as on x86_gcc2: Haiku's runtime loader does not search the
+# $ORIGIN/lib, as on x86_gcc2: RenkuOS's runtime loader does not search the
 # binary's own directory, but it does search <binary's directory>/lib, and that
 # is also the only place the VLC plugins - which carry no rpath - find the
 # libraries they need.

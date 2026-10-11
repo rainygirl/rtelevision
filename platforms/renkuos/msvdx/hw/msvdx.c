@@ -295,7 +295,7 @@ mmu_map_page(uint32 va, uint32 phys)
 /* Map `size` bytes of a locked area at `cpu` to decoder addresses from
  * `dev`, page by page. The decoder sees memory only through its own MMU, so
  * the pages need not be physically contiguous -- which matters: an hour after
- * boot Haiku's file cache has scattered free memory so thoroughly that no
+ * boot RenkuOS's file cache has scattered free memory so thoroughly that no
  * 1 MB contiguous run is left, with 1.5 GB nominally free (measured
  * 2026-09-30), and a 720p surface is 1.4 MB. */
 static int

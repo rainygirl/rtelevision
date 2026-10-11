@@ -11,7 +11,7 @@
 |---|---|---|
 | macOS 11 이상, Apple Silicon 또는 Intel | 앱 다운로드 | 없음 |
 | Linux x86_64: Debian, Ubuntu, Linux Mint | 명령 한 줄로 빌드 | 인터넷 연결, 비밀번호 한 번 |
-| Haiku x86_64, 32비트 x86, arm64 | `pkgman`으로 설치 | 인터넷 연결 |
+| RenkuOS x86_64, 32비트 x86, arm64 | `pkgman`으로 설치 | 인터넷 연결 |
 
 어느 시스템에서도 VLC를 따로 설치할 필요가 없습니다. R Television이 직접 들고 다닙니다.
 
@@ -58,11 +58,11 @@ Apple Developer ID로 서명한 앱이 아니어서 처음에는 macOS가 실행
 
 Linux Mint 20.3과 Ubuntu 20.04에서 확인했습니다.
 
-### Haiku
+### RenkuOS
 
-![Haiku의 R Television](docs/screenshots/haiku.png)
+![RenkuOS의 R Television](docs/screenshots/haiku.png)
 
-R Television은 Haiku의 모든 아키텍처용으로 패키지가 있고, 미디어 라이브러리를
+R Television은 RenkuOS의 모든 아키텍처용으로 패키지가 있고, 미디어 라이브러리를
 패키지 안에 담고 있어서 VLC를 따로 설치할 필요가 없습니다.
 
 ```sh
@@ -84,12 +84,12 @@ pkgman install rtelevision_x86
 열고 다음을 실행합니다.
 
 ```sh
-cd platforms/haiku
+cd platforms/renkuos
 ./install.sh
 ```
 
 없는 패키지(`gcc`, `haiku_devel`)는 `pkgman`으로 설치하고, 시스템의 다른 부분은
-건드리지 않습니다. 빌드 관련 내용은 [AGENTS.md](AGENTS.md#haiku)(영어)에 있습니다.
+건드리지 않습니다. 빌드 관련 내용은 [AGENTS.md](AGENTS.md#renkuos)(영어)에 있습니다.
 
 Sony VAIO P(인텔 GMA500 칩셋)에서는 x86 패키지가 H.264 채널을 칩셋의 비디오
 디코더로 디코딩합니다. 소프트웨어 디코딩의 절반 정도 CPU만 씁니다. 그 디코더용
@@ -111,7 +111,7 @@ Linux(프로젝트 폴더에서):
 cd platforms/linux && make uninstall
 ```
 
-Haiku:
+RenkuOS:
 
 저장소에서 설치한 경우:
 
@@ -127,7 +127,7 @@ rm -rf ~/config/non-packaged/apps/RTelevision ~/config/settings/deskbar/menu/App
 rm -rf ~/config/non-packaged/data/RTelevision ~/config/settings/RTelevision
 ```
 
-macOS의 두 번째 줄과 Haiku의 `settings` 폴더에는 채널 목록 캐시와 즐겨찾기가 들어 있습니다.
+macOS의 두 번째 줄과 RenkuOS의 `settings` 폴더에는 채널 목록 캐시와 즐겨찾기가 들어 있습니다.
 
 ## 라이선스
 

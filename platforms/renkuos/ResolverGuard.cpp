@@ -1,6 +1,6 @@
 // Keeps thread cancellation out of the resolver.
 //
-// Haiku's nsdispatch() (libnetwork, NetBSD lineage) tracks the threads that are
+// RenkuOS's nsdispatch() (libnetwork, NetBSD lineage) tracks the threads that are
 // inside it with a linked list of nodes that live on each caller's stack. A
 // thread cancelled while it is resolving never unlinks its node, and the next
 // lookup from any thread walks into the dead stack and crashes with a segment
@@ -8,7 +8,7 @@
 // or switched while it is still connecting, it cancels the helper thread it
 // runs getaddrinfo() on.
 //
-// Haiku's runtime loader resolves symbols starting from the executable, so the
+// RenkuOS's runtime loader resolves symbols starting from the executable, so the
 // functions below take the place of libnetwork's for every image in the
 // process, VLC plugins included. Each one forwards to the real function with
 // cancellation switched off and lets a cancel that arrived meanwhile act right

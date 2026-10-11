@@ -1,7 +1,7 @@
 #!/bin/sh
 # Vendors libVLC into third_party/vlc-haiku-<arch> WITHOUT installing anything.
 #
-# Haiku packages are plain archives. pkgman is only asked what *would* be
+# RenkuOS packages are plain archives. pkgman is only asked what *would* be
 # needed - it is answered "no" so it never acts - and the .hpkg files are then
 # downloaded and unpacked with `package extract`. Nothing is activated and the
 # system is left untouched, so the app carries its own libVLC the same way the
@@ -34,7 +34,7 @@ if [ -f "$DEST/lib/libvlc.so" ] && [ -d "$DEST/plugins" ]; then
     exit 0
 fi
 
-command -v package >/dev/null 2>&1 || { echo "this script only runs on Haiku" >&2; exit 1; }
+command -v package >/dev/null 2>&1 || { echo "this script only runs on RenkuOS" >&2; exit 1; }
 DL=""
 command -v curl >/dev/null 2>&1 && DL="curl -fsSL -o"
 [ -n "$DL" ] || { command -v wget >/dev/null 2>&1 && DL="wget -q -O"; }
@@ -107,7 +107,7 @@ cp -a "$WORK/root/develop/headers${LIBSUB:+/$LIBSUB}/vlc" "$DEST/include/vlc" 2>
 cp -a "$RLIB/"libvlc.so* "$DEST/lib/" 2>/dev/null || true
 cp -a "$RLIB/"libvlccore.so* "$DEST/lib/" 2>/dev/null || true
 cp -a "$RLIB/vlc/plugins/." "$DEST/plugins/" 2>/dev/null || true
-# Haiku keeps the unversioned link-time symlinks under develop/lib.
+# RenkuOS keeps the unversioned link-time symlinks under develop/lib.
 cp -a "$WORK/root/develop/lib${LIBSUB:+/$LIBSUB}/"libvlc*.so "$DEST/lib/" 2>/dev/null || true
 [ -e "$DEST/lib/libvlc.so" ] || ln -sf libvlc.so.5 "$DEST/lib/libvlc.so"
 [ -e "$DEST/lib/libvlccore.so" ] || ln -sf libvlccore.so.9 "$DEST/lib/libvlccore.so"

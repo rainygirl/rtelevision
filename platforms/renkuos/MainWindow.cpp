@@ -270,7 +270,7 @@ void MainWindow::RefreshPlaylist() {
     });
 }
 
-// Haiku has no BWindow::SetFullScreen; drop the border, fill the screen and
+// RenkuOS has no BWindow::SetFullScreen; drop the border, fill the screen and
 // show the video alone. The split layout skips hidden items, so the sidebar's
 // divider disappears with it.
 void MainWindow::ToggleFullScreen() {
@@ -429,7 +429,7 @@ void MainWindow::MessageReceived(BMessage* message) {
 namespace {
 
 // Ends the process if an orderly shutdown has not managed to within a few
-// seconds. libVLC's stop can wedge on Haiku: on 2026-09-30 a close mid-stream
+// seconds. libVLC's stop can wedge on RenkuOS: on 2026-09-30 a close mid-stream
 // left the window thread in libvlc_media_player_stop(), joining the input
 // thread, which was joining a decoder thread that never returned from the
 // Haiku audio output. The window stayed on screen and the team never exited.

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Writes the R Television icon as a Haiku vector icon (HVIF).
+"""Writes the R Television icon as a RenkuOS vector icon (HVIF).
 
 Same picture as make-icon.py - a parabolic antenna on an isometric patch of
 lawn - redrawn as a handful of flat shapes so it fits in a few hundred bytes.
@@ -8,7 +8,7 @@ keeps the file free of stroke transformers. Gradients run left to right in the
 icon's own coordinate system (-64..64), so their stops are placed by x.
 
 Regenerate with:  python3 resources/icon/make-hvif.py
-Writes RTelevision.hvif next to this file; platforms/haiku/RTelevision.rdef
+Writes RTelevision.hvif next to this file; platforms/renkuos/RTelevision.rdef
 imports it. Only the standard library is needed.
 """
 import math

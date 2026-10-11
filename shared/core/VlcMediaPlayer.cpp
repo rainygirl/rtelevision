@@ -112,7 +112,7 @@ public:
         libvlc_media_player_set_hwnd(player_, nativeView);
         return true;
 #elif defined(__HAIKU__)
-        // libVLC 3 exposes no BView handle setter; the Haiku front end supplies a
+        // libVLC 3 exposes no BView handle setter; the RenkuOS front end supplies a
         // backend that renders through media_kit or a vmem callback instead.
         (void)nativeView;
         return false;
@@ -294,7 +294,7 @@ private:
     }
 
     // libVLC's input thread can end without a Stopped, EndReached or Error
-    // event (seen on Haiku after an HTTP redirect). The player then reports
+    // event (seen on RenkuOS after an HTTP redirect). The player then reports
     // Ended or Stopped while this object still says Opening or Buffering, and
     // the front end would wait forever. A few consecutive polls in that
     // condition turn it into an error report.

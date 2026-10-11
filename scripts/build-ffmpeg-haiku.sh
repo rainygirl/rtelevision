@@ -1,16 +1,16 @@
 #!/bin/sh
-# Cross-builds a minimal FFmpeg for Haiku into third_party/ffmpeg-haiku-<arch>.
+# Cross-builds a minimal FFmpeg for RenkuOS into third_party/ffmpeg-haiku-<arch>.
 #
 # Why: HaikuPorts publishes no vlc and no ffmpeg for arm64, so there is nothing
-# to vendor there. FFmpeg cross-compiles cleanly for Haiku, and the app has an
+# to vendor there. FFmpeg cross-compiles cleanly for RenkuOS, and the app has an
 # FFmpeg media backend (shared/core/FFmpegMediaPlayer.cpp) for exactly this case.
 #
-# Needs a Haiku cross toolchain. Point CROSS_TOOLS at it, e.g. the one a Haiku
+# Needs a RenkuOS cross toolchain. Point CROSS_TOOLS at it, e.g. the one a RenkuOS
 # build produces in generated/cross-tools-arm64:
 #
 #   CROSS_TOOLS=/path/to/cross-tools-arm64 sh scripts/build-ffmpeg-haiku.sh
 #
-# Run it on Linux/macOS (not on Haiku itself - the arm64 image has no make).
+# Run it on Linux/macOS (not on RenkuOS itself - the arm64 image has no make).
 set -eu
 
 ARCH="${ARCH:-arm64}"
@@ -19,7 +19,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 DEST="$ROOT/third_party/ffmpeg-haiku-$ARCH"
 WORK="${WORK:-/tmp/ffmpeg-haiku-$ARCH}"
 
-: "${CROSS_TOOLS:?set CROSS_TOOLS to a Haiku cross toolchain directory}"
+: "${CROSS_TOOLS:?set CROSS_TOOLS to a RenkuOS cross toolchain directory}"
 PREFIX_TRIPLE="${PREFIX_TRIPLE:-aarch64-unknown-haiku-}"
 [ -x "$CROSS_TOOLS/bin/${PREFIX_TRIPLE}gcc" ] || {
     echo "no ${PREFIX_TRIPLE}gcc under $CROSS_TOOLS/bin" >&2
@@ -64,5 +64,5 @@ cp -a "$WORK/install/include" "$DEST/include"
 cp -a "$WORK/install/lib" "$DEST/lib"
 
 echo
-echo "built FFmpeg $FFMPEG_VERSION for Haiku/$ARCH -> $DEST"
+echo "built FFmpeg $FFMPEG_VERSION for RenkuOS/$ARCH -> $DEST"
 du -sh "$DEST"

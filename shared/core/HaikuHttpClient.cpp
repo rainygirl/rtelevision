@@ -1,7 +1,7 @@
-// HttpClient backed by Haiku's own network services (libnetservices).
+// HttpClient backed by RenkuOS's own network services (libnetservices).
 //
 // Built instead of CurlHttpClient.cpp where curl_devel is not installed - which
-// is the situation on Haiku/arm64, whose HaikuPorts repository currently
+// is the situation on RenkuOS/arm64, whose HaikuPorts repository currently
 // publishes no curl package.
 #include <DataIO.h>
 #include <HttpHeaders.h>

@@ -1,6 +1,6 @@
 // Monochrome glyphs for the transport buttons, drawn at runtime.
 //
-// Haiku has no icon set to borrow from here and shipping PNGs would mean
+// RenkuOS has no icon set to borrow from here and shipping PNGs would mean
 // carrying the translators too, so the handful of shapes are drawn straight
 // into a BBitmap. They come out in a single colour by construction.
 #pragma once

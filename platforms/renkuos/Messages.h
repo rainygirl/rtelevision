@@ -1,4 +1,4 @@
-// Message constants shared by the Haiku window and its child views.
+// Message constants shared by the RenkuOS window and its child views.
 #pragma once
 
 namespace tv {

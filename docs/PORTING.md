@@ -12,13 +12,13 @@
                 └────┬─────┘
            ┌─────────┴─────────┐
       MediaPlayer          HttpClient
-      libVLC / Null        libcurl / Haiku netservices
+      libVLC / Null        libcurl / RenkuOS netservices
 ```
 
 `shared/`에는 UI 코드도, `#import`도, 플랫폼 SDK 호출도 없다. OS 차이를 흡수하는
 지점은 네 군데뿐이다.
 
-| 경계 | 파일 | macOS | Linux | Haiku |
+| 경계 | 파일 | macOS | Linux | RenkuOS |
 |---|---|---|---|---|
 | 데이터 경로 | `core/Paths.cpp` | `~/Library/Application Support/` | `$XDG_DATA_HOME` | `~/config/settings/` |
 | 비디오 출력 | `core/MediaPlayer.h` | `attachVideoView(NSView*)` | `attachVideoView(XID)` | `attachVideoSink(VideoFrameSink*)` |
@@ -34,7 +34,7 @@ HLS 릴레이(`core/HlsRelay.cpp`)도 코어에 있다. 화질이 하나뿐인 �
 연결로 복제해 경주시킨다. 연결마다 속도 편차가 커서, 이게 없으면 가장 느린 조각 하나가
 세그먼트 전체를 붙잡는다(ABC 1080p 측정: 가장 느린 조각 12~16초 → 8초 이내).
 첫 재생목록 요청은 20초 분량이 쌓일 때까지 붙잡는다. 서버가 실시간의 2배 이상으로
-빠르면 곧바로 내준다. 소켓은 POSIX API라 세 플랫폼에 같은 코드가 돈다(Haiku는
+빠르면 곧바로 내준다. 소켓은 POSIX API라 세 플랫폼에 같은 코드가 돈다(RenkuOS는
 `-lnetwork`). 끄려면 `RTV_NO_HLS_RELAY=1`, 조정은 `RTV_RELAY_CONNECTIONS`(기본 4)와
 `RTV_RELAY_BUFFER`(초, 기본 20)로 한다.
 
@@ -98,7 +98,7 @@ Linux Mint 20.3 (Ubuntu 20.04 기반, 커널 5.4, bspwm + compton)에서 빌드�
    `xwd`가 검은 화면을 준다. XVideo 오버레이(`xcb_xv`)는 컴포지터가 없어도 캡처되지 않는다.
    `RTV_VLC_ARGS="--vout=xcb_x11"`로 오버레이를 끄면 캡처된다. 앱 자체의 문제는 아니다.
 
-## Haiku arm64 — 재생까지 확인됨
+## RenkuOS arm64 — 재생까지 확인됨
 
 ### FFmpeg 백엔드의 재생 속도 (2026-09-14 수정)
 
@@ -106,7 +106,7 @@ Linux Mint 20.3 (Ubuntu 20.04 기반, 커널 5.4, bspwm + compton)에서 빌드�
 기다린다. 예전 디코드 루프는 한 스레드가 패킷을 읽고 디코드하고 영상 프레임 시각까지
 그 자리에서 기다렸다. ABC처럼 영상이 같은 시각의 오디오보다 0.5~1.2초 앞서 섞인
 스트림에서는, 영상이 기다리는 동안 그 오디오를 읽을 스레드가 없어 시계가 서고, 매 프레임이
-대기 상한(5초)을 채웠다. Haiku에서는 "재생 중"인데 화면이 거의 멈춰 있고 CPU는 놀았다.
+대기 상한(5초)을 채웠다. RenkuOS에서는 "재생 중"인데 화면이 거의 멈춰 있고 CPU는 놀았다.
 
 지금은 영상 패킷을 압축된 채로 큐에 두고 시계보다 0.5초 앞까지만 디코드하며, 오디오는 읽는
 즉시 사운드카드로 보낸다. 디코드된 프레임은 12장까지만 들고 있고, 큐가 8초를 넘으면 시계와
@@ -116,24 +116,24 @@ Linux Mint 20.3 (Ubuntu 20.04 기반, 커널 5.4, bspwm + compton)에서 빌드�
 macOS에서 같은 코드를 실시간으로 소비하는 가짜 사운드카드에 붙여 비교했다(ABC, 릴레이 경유).
 예전 루프는 오디오 0.00 s/s·CPU 0%로 멈췄고, 지금 루프는 오디오 1.01 s/s·CPU 35%다.
 
-HaikuPorts arm64에는 vlc도 ffmpeg도 없다. 그래서 **FFmpeg를 Haiku/arm64로 크로스
+HaikuPorts arm64에는 vlc도 ffmpeg도 없다. 그래서 **FFmpeg를 RenkuOS/arm64로 크로스
 빌드하고 libVLC 대신 그 위에 백엔드를 하나 더 만들었다** (`FFmpegMediaPlayer`).
 
 - `MediaPlayer` 인터페이스와 `VideoFrameSink`가 이미 있었기 때문에 UI와 코어는 한 줄도
   바뀌지 않았다. 새 백엔드는 `avformat`으로 URL을 열고, `avcodec`으로 디코딩하고,
   `swscale`로 BGRA로 바꿔 싱크에 넣고, PTS에 맞춰 페이싱한다.
-- 빌드는 Haiku 크로스 툴체인(`cross-tools-arm64`)으로 Linux/macOS 쪽에서 한다.
-  arm64 Haiku 이미지에는 `make`조차 없으므로 네이티브 빌드는 불가능하다.
+- 빌드는 RenkuOS 크로스 툴체인(`cross-tools-arm64`)으로 Linux/macOS 쪽에서 한다.
+  arm64 RenkuOS 이미지에는 `make`조차 없으므로 네이티브 빌드는 불가능하다.
   앱 자체는 `install.sh`의 make 없는 경로로 VM에서 컴파일된다.
-- 오디오도 붙어 있다. 코어에 `AudioSink`를 하나 더 두고(`MediaPlayer.h`), Haiku 쪽은
-  `platforms/haiku/AudioOutput.cpp`에서 `BSoundPlayer`로 구현했다. BSoundPlayer는
+- 오디오도 붙어 있다. 코어에 `AudioSink`를 하나 더 두고(`MediaPlayer.h`), RenkuOS 쪽은
+  `platforms/renkuos/AudioOutput.cpp`에서 `BSoundPlayer`로 구현했다. BSoundPlayer는
   콜백으로 샘플을 **당겨가는** 구조라 링 버퍼를 두고, 디코더가 채우고 콜백이 비운다.
   버퍼가 차면 `queueAudio()`가 막히므로 디코딩 속도가 사운드 카드에 맞춰 저절로 조절된다.
 - **동기화는 오디오가 마스터 클럭**이다. `AudioSink::playedMicros()`가 사운드 카드가
   실제로 재생한 양을 돌려주고, 영상 프레임은 자기 PTS가 그 시계에 도달할 때까지 기다린다.
   오디오가 없는 스트림에서는 벽시계로 되돌아간다.
 
-## Haiku arm64 — UI 실행 확인됨
+## RenkuOS arm64 — UI 실행 확인됨
 
 QEMU(hvf, `-cpu host`)에서 도는 Haiku R1~beta6 arm64(hrev99002)에서 빌드하고 실행했다.
 
@@ -154,7 +154,7 @@ QEMU(hvf, `-cpu host`)에서 도는 Haiku R1~beta6 arm64(hrev99002)에서 빌드
   빌드는 `NullMediaPlayer`로 떨어지고 재생 시도는
   "no media backend on this build"를 보고한다. 목록·검색·즐겨찾기·캐시는 전부 정상.
 - 따라서 `VideoView`의 `BBitmap` 블릿 경로(= `VideoFrameSink` 구현)는
-  **아직 실제 프레임을 받아 본 적이 없다.** x86_64 Haiku에서 `vlc_devel`을 깔고
+  **아직 실제 프레임을 받아 본 적이 없다.** x86_64 RenkuOS에서 `vlc_devel`을 깔고
   `make VLC=1`로 빌드하면 여기가 첫 검증 지점이다. 색이 뒤집히면
   `VlcMediaPlayer::formatCb`의 `memcpy(chroma, "RV32", 4)` 한 줄을 바꾼다.
 
@@ -182,10 +182,10 @@ QEMU(hvf, `-cpu host`)에서 도는 Haiku R1~beta6 arm64(hrev99002)에서 빌드
    둔다. rpath가 없는 VLC 플러그인이 libdvbpsi 같은 의존 라이브러리를 찾는 유일한 길이다.
 8. 최소 이미지에는 `make`·`grep`·`sed`·`awk`·`tar`·`which`가 **없다.**
    `install.sh`가 make 없이도 빌드하도록 짠 이유다.
-9. 국기 이모지는 Haiku 기본 폰트에 글리프가 없어 `🇰🇷` 대신 `KR`이 네모 두 칸으로
+9. 국기 이모지는 RenkuOS 기본 폰트에 글리프가 없어 `🇰🇷` 대신 `KR`이 네모 두 칸으로
    그려진다. 읽는 데 지장은 없어 그대로 뒀다.
 
-### Haiku 빌드 의존성
+### RenkuOS 빌드 의존성
 
 ```sh
 pkgman install gcc haiku_devel      # 필수 (이미지에 이미 있을 수 있음)
@@ -207,9 +207,9 @@ UI 전에 `make cli`로 헤드리스 도구가 도는지 보면 코어(파싱·H
 |---|---|---|
 | macOS | SF Symbols | 템플릿 이미지는 강조색으로 칠해진다. `NSImageSymbolConfiguration configurationWithHierarchicalColor:` 로 라벨 색을 지정하고 `template = NO` |
 | Linux | 아이콘 테마 | `-symbolic` 이름을 쓰면 정의상 단색이고 전경색을 따라간다 |
-| Haiku | 없음 | `Icons.cpp`가 BBitmap에 직접 그린다. PNG를 쓰면 translators까지 딸려오므로 도형으로 그리는 편이 가볍다 |
+| RenkuOS | 없음 | `Icons.cpp`가 BBitmap에 직접 그린다. PNG를 쓰면 translators까지 딸려오므로 도형으로 그리는 편이 가볍다 |
 
-Haiku에서 아이콘 버튼을 쓰려면 `BControl::SetIcon(const BBitmap*)`에 넘긴다.
+RenkuOS에서 아이콘 버튼을 쓰려면 `BControl::SetIcon(const BBitmap*)`에 넘긴다.
 작은 크기(16-20px)에서는 모서리 브래킷 같은 도형의 팔 길이를 충분히 짧게 잡아야
 가운데가 붙어 네모로 뭉개지지 않는다.
 
@@ -233,10 +233,10 @@ Haiku에서 아이콘 버튼을 쓰려면 `BControl::SetIcon(const BBitmap*)`에
 |---|---|---|
 | macOS | VideoLAN 공식 universal dmg | 플러그인 346개, 185MB. 번들 안 `Contents/MacOS/{lib,plugins}` |
 | Linux | 배포판 .deb (`apt-get download` + `dpkg -x`, root 불필요) | 플러그인 353개, 15MB. `$ORIGIN/vlc/lib` |
-| Haiku x86_64 | HaikuPorts `.hpkg`를 받아 `package extract`로 해제 (설치 안 함) | 플러그인 310개, 17MB. 실행 파일 옆 + `$ORIGIN` |
-| Haiku arm64 | FFmpeg를 직접 크로스 빌드 (`scripts/build-ffmpeg-haiku.sh`) | 4.7MB. 실행 파일 옆 + `$ORIGIN` |
+| RenkuOS x86_64 | HaikuPorts `.hpkg`를 받아 `package extract`로 해제 (설치 안 함) | 플러그인 310개, 17MB. 실행 파일 옆 + `$ORIGIN` |
+| RenkuOS arm64 | FFmpeg를 직접 크로스 빌드 (`scripts/build-ffmpeg-haiku.sh`) | 4.7MB. 실행 파일 옆 + `$ORIGIN` |
 
-arm64 Haiku만 예외인 이유는 단순하다. HaikuPorts의 arm64 저장소에는 패키지가 50개뿐이고
+arm64 RenkuOS만 예외인 이유는 단순하다. HaikuPorts의 arm64 저장소에는 패키지가 50개뿐이고
 vlc도 ffmpeg도 없다. `pkgman install vlc`가
 `Failed to find a match for "vlc": Name not found`로 끝난다. 상류에 바이너리가 존재하지
 않으므로 가져올 대상이 없다. 이 조합은 `NullMediaPlayer`로 빌드되고, 재생을 시도하면
@@ -245,7 +245,7 @@ vlc도 ffmpeg도 없다. `pkgman install vlc`가
 직접 포팅하려면 HaikuPorts 레시피(vlc + ffmpeg + 30여 개 의존성)를 arm64 크로스
 툴체인으로 빌드해야 한다. 그게 끝나면 `fetch-libvlc.sh`가 그대로 동작한다.
 
-### Haiku에서 설치 없이 번들하기
+### RenkuOS에서 설치 없이 번들하기
 
 `.hpkg`는 그냥 아카이브라서 활성화하지 않고도 열 수 있다.
 
@@ -260,7 +260,7 @@ vlc도 ffmpeg도 없다. `pkgman install vlc`가
 
 주의할 점 두 가지:
 
-- Haiku의 런타임 로더는 **실행 파일 디렉터리를 자동으로 찾지 않는다.** `-Wl,-rpath,'$ORIGIN'`이 필요하다.
+- RenkuOS의 런타임 로더는 **실행 파일 디렉터리를 자동으로 찾지 않는다.** `-Wl,-rpath,'$ORIGIN'`이 필요하다.
 - rpath는 **의존성의 의존성까지 전파되지 않는다.** libvlc가 libvlccore를 찾지 못하므로
   `-lvlccore`를 실행 파일에 직접 링크해 로더가 앱의 rpath로 찾게 해야 한다.
   (Linux에서 RUNPATH 때문에 겪은 것과 같은 문제다.)
@@ -369,7 +369,7 @@ libVLC 0.9의 OpenGL 출력은 `CGDisplayUsesOpenGLAcceleration`을 확인하고
 후보를 훑다가 `caca`, 즉 ASCII 아트 출력으로 떨어진다.
 
 그래서 `vmem` 출력을 쓴다. 디코딩 결과를 메모리 버퍼에 받아 프런트엔드가 직접
-그리는 방식이고, Haiku가 쓰는 `VideoFrameSink`와 같은 경로다. vmem은 설정을
+그리는 방식이고, RenkuOS가 쓰는 `VideoFrameSink`와 같은 경로다. vmem은 설정을
 인스턴스 생성 시점에만 읽으므로(`config_GetPsz`는 객체 변수가 아니라 설정을 본다)
 버퍼 크기가 고정이고, 뷰가 레터박스로 맞춘다.
 

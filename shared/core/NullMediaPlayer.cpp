@@ -1,7 +1,7 @@
 // Playback backend for targets where no media library is available yet.
 //
 // Built instead of VlcMediaPlayer.cpp when a platform has no libVLC package -
-// Haiku/arm64 today. Everything except playback (channel list, search,
+// RenkuOS/arm64 today. Everything except playback (channel list, search,
 // favorites, offline cache) works exactly the same; play() reports why.
 #include <atomic>
 #include <mutex>

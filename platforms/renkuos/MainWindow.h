@@ -1,4 +1,4 @@
-// Haiku front end: channel tree on the left, video on the right.
+// RenkuOS front end: channel tree on the left, video on the right.
 #pragma once
 
 #include <Button.h>

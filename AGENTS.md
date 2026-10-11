@@ -29,9 +29,9 @@ One portable C++17 core, one native front end per platform:
 |---|---|---|---|
 | macOS arm64 / x86_64 | Cocoa (Objective-C++) | libVLC 3.0.23 | yes, 343 plugins |
 | Linux x86_64 | GTK3 | libVLC 3.0.9 from the distribution | yes, 353 plugins |
-| Haiku x86_64 | BeAPI | libVLC 3.0.23 | yes, pruned from HaikuPorts |
-| Haiku x86 (x86_gcc2 hybrid) | BeAPI | libVLC 3.0.23 | yes, unpacked from HaikuPorts |
-| Haiku arm64 | BeAPI | FFmpeg 6.1.2 | yes, cross-built |
+| RenkuOS x86_64 | BeAPI | libVLC 3.0.23 | yes, pruned from HaikuPorts |
+| RenkuOS x86 (x86_gcc2 hybrid) | BeAPI | libVLC 3.0.23 | yes, unpacked from HaikuPorts |
+| RenkuOS arm64 | BeAPI | FFmpeg 6.1.2 | yes, cross-built |
 | Mac OS X 10.4 PowerPC | Cocoa (Objective-C) | libVLC 0.9.10 | yes, from the PowerPC VLC |
 
 VLC never has to be installed by the user; every build carries its own media
@@ -50,7 +50,7 @@ shared/core/          portable C++17: no UI, no platform SDK calls
   MediaPlayer         backend interface, VideoFrameSink, AudioSink
     VlcMediaPlayer      libVLC
     VlcLegacyMediaPlayer  libVLC 0.9, for Mac OS X 10.4 PowerPC
-    FFmpegMediaPlayer   FFmpeg, where there is no libVLC (Haiku arm64)
+    FFmpegMediaPlayer   FFmpeg, where there is no libVLC (RenkuOS arm64)
     NullMediaPlayer     no playback; everything else still works
   HlsRelay            local relay for live streams slower than their bitrate,
                       and HlsTuner, which serves channels as plain MPEG-TS
@@ -58,14 +58,14 @@ shared/core/          portable C++17: no UI, no platform SDK calls
   Aes128              AES-128-CBC decryption, for #EXT-X-KEY segments
   HttpClient          HTTP interface
     CurlHttpClient      libcurl (macOS, Linux)
-    HaikuHttpClient     Haiku network services
+    HaikuHttpClient     RenkuOS network services
   Paths, Country      data directories, flags, country names
   Strings             the interface text in four languages
 shared/tools/         rtv-cli, the headless driver
 shared/common.mk      core source lists and flags for every platform Makefile
 platforms/macos/      Cocoa front end, Makefile, install.sh, fetch-libvlc.sh
 platforms/linux/      GTK3 front end, Makefile, install.sh, fetch-libvlc.sh
-platforms/haiku/      BeAPI front end (BSoundPlayer audio), Makefile, install.sh
+platforms/renkuos/      BeAPI front end (BSoundPlayer audio), Makefile, install.sh
 platforms/macos-ppc/  Mac OS X 10.4 PowerPC: Cocoa front end and UiBridge, the C
                       boundary that lets Apple GCC 4.0.1 build the UI while
                       GCC 4.7 builds the C++11 core
@@ -87,11 +87,11 @@ licenses/             full LGPL-2.1 and GPL-2.0 texts
 - Core callbacks (`MediaPlayer::StateCallback`, `AppController::RefreshCallback`,
   relay progress) arrive on worker threads. Front ends hop to their UI thread
   first: `dispatch_async(main_queue)` on macOS, `g_idle_add` on Linux,
-  `BMessenger::SendMessage` on Haiku.
+  `BMessenger::SendMessage` on RenkuOS.
 - All Makefiles build with `-MMD -MP` and include the `.d` files. Without it a
   changed header silently leaves stale objects with the wrong struct layout.
 
-| Boundary | File | macOS | Linux | Haiku |
+| Boundary | File | macOS | Linux | RenkuOS |
 |---|---|---|---|---|
 | Data directory | `core/Paths.cpp` | `~/Library/Application Support/RTelevision` | `$XDG_DATA_HOME/RTelevision` | `~/config/settings/RTelevision` |
 | Video output | `core/MediaPlayer.h` | `attachVideoView(NSView*)` | `attachVideoView(XID)` | `attachVideoSink(VideoFrameSink*)` |
@@ -234,7 +234,7 @@ platform sets `RelaySettings::plainTransportStream`: the relay hands the backend
 one continuous MPEG-TS body and decrypts AES-128 itself, because a player fed a
 plain stream never sees the key tag.
 
-The picture comes back through `VideoFrameSink`, as on Haiku: libVLC's OpenGL
+The picture comes back through `VideoFrameSink`, as on RenkuOS: libVLC's OpenGL
 output checks `CGDisplayUsesOpenGLAcceleration` and refuses to start on a Mac
 without Quartz Extreme, so the backend uses VLC's `vmem` output and the Cocoa
 view draws the buffer. The list has an SD-only switch beside the search field,
@@ -247,7 +247,7 @@ make cli                # rtv-cli, the first thing to bring up
 make                    # the application bundle
 ```
 
-### Haiku
+### RenkuOS
 
 `install.sh` installs any missing `gcc` / `haiku_devel` with `pkgman`, finds or
 fetches the backend, builds, and installs into `~/config/non-packaged`. `make`
@@ -255,7 +255,7 @@ is optional: without it, `install.sh` compiles the sources directly (minimal
 arm64 images have no make).
 
 ```sh
-cd platforms/haiku
+cd platforms/renkuos
 make                         # build only
 make backend                 # report which backends were found
 make cli                     # no BeAPI UI needed
@@ -282,7 +282,7 @@ publishes for it differs:
 | Repository | Package | Built | Media library |
 |---|---|---|---|
 | `x86_gcc2` | `rtelevision_x86`, requires `haiku_x86` | on the machine, `setarch x86 make` | bundled, from `third_party/vlc-haiku-BePC` |
-| `x86_64` | `rtelevision`, requires `haiku` | cross, `platforms/haiku/cross-x86_64.sh` | bundled, pruned from the HaikuPorts `vlc` and its dependencies |
+| `x86_64` | `rtelevision`, requires `haiku` | cross, `platforms/renkuos/cross-x86_64.sh` | bundled, pruned from the HaikuPorts `vlc` and its dependencies |
 | `arm64` | `rtelevision`, requires `haiku` and `lib:libssl` | cross, `pkgman-repo` `scripts/cross-arm64.sh` | bundled, from `third_party/ffmpeg-haiku-arm64` |
 
 The `_x86` name on the hybrid is the HaikuPorts convention for a package built
@@ -300,21 +300,21 @@ documentation/packages/<package name>/{LICENSE, THIRD-PARTY-NOTICES.md, READMEs}
 ```
 
 ```sh
-scripts/build.sh rtelevision              # on a Haiku machine of that architecture
+scripts/build.sh rtelevision              # on a RenkuOS machine of that architecture
 scripts/build.sh --arch x86_64 rtelevision  # a cross-built dist/ only needs packaging
 scripts/make-repo.sh x86_gcc2             # repo, repo.info, repo.sha256, packages.txt
 scripts/deploy.sh x86_gcc2                # from the workstation, to the web server
 ```
 
-#### Haiku x86_64: cross-compiling with clang
+#### RenkuOS x86_64: cross-compiling with clang
 
-No Haiku x86_64 machine has to exist to publish for it. `cross-x86_64.sh`
+No RenkuOS x86_64 machine has to exist to publish for it. `cross-x86_64.sh`
 builds `dist/x86_64/` on the workstation with clang, whose
 `x86_64-unknown-haiku` target means no cross toolchain has to be built; only
 the C runtime startup files come from Haiku's gcc, through `-B`.
 
 ```sh
-RTV_HAIKU_SYSROOT=/Volumes/HaikuX64/sysroot sh platforms/haiku/cross-x86_64.sh
+RTV_HAIKU_SYSROOT=/Volumes/HaikuX64/sysroot sh platforms/renkuos/cross-x86_64.sh
 ```
 
 HaikuPorts does publish `vlc` for x86_64, so this could have been a 0.8 MB
@@ -330,7 +330,7 @@ whose dependencies still cannot be met. That last step is what drops the Qt
 interface rather than dragging Qt in.
 
 The sysroot is these packages unpacked on top of each other into
-`<sysroot>/boot/system` with Haiku's own `package extract`: `haiku` and
+`<sysroot>/boot/system` with RenkuOS's own `package extract`: `haiku` and
 `haiku_devel` from the Haiku repository, and from HaikuPorts `gcc`,
 `gcc_syslibs`, `gcc_syslibs_devel`, `vlc`, `vlc_devel` plus everything
 `vlc`'s `requires: lib:...` names except qt5 - 43 packages, `a52dec` through
@@ -338,30 +338,30 @@ The sysroot is these packages unpacked on top of each other into
 holds one soname per line for the libraries `haiku` and `gcc_syslibs` already
 provide.
 
-It has to sit on a **case-sensitive** filesystem: Haiku ships both
+It has to sit on a **case-sensitive** filesystem: RenkuOS ships both
 `<string.h>` and the BString header `<String.h>`, and on a case-insensitive
 volume - which is what macOS formats by default - the first `#include
 <string.h>` picks up BString and nothing compiles. `hdiutil create -fs
 "Case-sensitive APFS"` makes a volume that works.
 
-#### Haiku arm64: FFmpeg
+#### RenkuOS arm64: FFmpeg
 
 HaikuPorts publishes neither `vlc` nor `ffmpeg` for arm64, so FFmpeg is
-cross-built on Linux or macOS with the Haiku cross toolchain:
+cross-built on Linux or macOS with the RenkuOS cross toolchain:
 
 ```sh
 CROSS_TOOLS=/path/to/cross-tools-arm64 sh scripts/build-ffmpeg-haiku.sh
 ```
 
 That writes `third_party/ffmpeg-haiku-arm64/` (about 4.7 MB, LGPL build: no
-`--enable-gpl`, no `--enable-nonfree`). Copy the project to the Haiku machine
+`--enable-gpl`, no `--enable-nonfree`). Copy the project to the RenkuOS machine
 and run `./install.sh`; it picks the FFmpeg backend up by itself.
 
 ## GMA500 hardware H.264 on the x86 build (2026-09-30)
 
-`platforms/haiku/msvdx/` builds `libmsvdx_plugin.so`, a libVLC decoder
+`platforms/renkuos/msvdx/` builds `libmsvdx_plugin.so`, a libVLC decoder
 module that decodes H.264 on the VAIO P's GMA500 video decoder instead of in
-libavcodec. The Haiku Makefile builds it and copies it into
+libavcodec. The RenkuOS Makefile builds it and copies it into
 `vlc/plugins/codec` when `ARCH` is `BePC` and the vendored VLC has plugin
 headers. Its README has the layout, the licences and the conditions under
 which it steps aside for libavcodec.
@@ -393,10 +393,10 @@ fps, 22% of the machine against 53% with libavcodec over the same 60 s.
 | macOS | `platforms/macos/build/<archs>/R Television.app` (about 193 MB, mostly VLC plugins) | `/Applications/R Television.app` | `~/Library/Application Support/RTelevision/` |
 | Linux | `platforms/linux/build/` | `~/.local/lib/RTelevision/`, `~/.local/bin/r-television`, `.desktop` entry and icon under `~/.local/share` | `~/.local/share/RTelevision/` |
 | Mac OS X 10.4 PowerPC | `platforms/macos-ppc/build/` | `/Applications/R Television.app` (about 45 MB) | `~/Library/Application Support/RTelevision/` |
-| Haiku | `platforms/haiku/build/` | from `pkgman`: `/boot/system/apps/RTelevision/`. From source: `~/config/non-packaged/apps/RTelevision/` holding the binary, `lib/` with the bundled `.so` files and `vlc/plugins`; snapshot in `~/config/non-packaged/data/RTelevision/`, Deskbar link | `~/config/settings/RTelevision/` |
+| RenkuOS | `platforms/renkuos/build/` | from `pkgman`: `/boot/system/apps/RTelevision/`. From source: `~/config/non-packaged/apps/RTelevision/` holding the binary, `lib/` with the bundled `.so` files and `vlc/plugins`; snapshot in `~/config/non-packaged/data/RTelevision/`, Deskbar link | `~/config/settings/RTelevision/` |
 
 Every bundle also carries `LICENSE`, `THIRD-PARTY-NOTICES.md` and `licenses/`.
-`~/config/apps` on Haiku is read-only packagefs, hence `non-packaged`.
+`~/config/apps` on RenkuOS is read-only packagefs, hence `non-packaged`.
 
 ## Command line tool
 
@@ -429,37 +429,37 @@ The core without a window; the first thing to bring up on a new platform.
   master playlists and never fetches video; the same channels play with 3.0.23.
 - On Linux the default XVideo overlay is not captured by screenshots; use
   `RTV_VLC_ARGS="--vout=xcb_x11"` when taking them.
-- Haiku's runtime loader does not search the binary's directory, but it does
+- RenkuOS's runtime loader does not search the binary's directory, but it does
   search `<binary's directory>/lib`. The bundled libraries live there: the app
   finds libvlc through `-Wl,-rpath,'$ORIGIN/lib'`, and the VLC plugins, which
   have no rpath, find their own dependencies (libdvbpsi for the TS demuxer)
   through the loader's default path. Libraries placed next to the binary were
   invisible to the plugins, so TS-based HLS never played. `-lvlccore` is on the
   link line because an rpath does not carry over to a dependency's dependencies.
-- Haiku without a sound device: `media_addon_server` may quit; VLC builds can
+- RenkuOS without a sound device: `media_addon_server` may quit; VLC builds can
   run with `RTV_VLC_ARGS="--no-audio"`.
-- Haiku's `nsdispatch()` crashes after a thread is cancelled inside a name
+- RenkuOS's `nsdispatch()` crashes after a thread is cancelled inside a name
   lookup, which libVLC does when a stream is stopped while still connecting.
-  `platforms/haiku/ResolverGuard.cpp` interposes the resolver functions and
+  `platforms/renkuos/ResolverGuard.cpp` interposes the resolver functions and
   runs them with cancellation disabled.
-- Haiku's `socket()` ignores `SOCK_NONBLOCK` for the socket itself (fcntl
+- RenkuOS's `socket()` ignores `SOCK_NONBLOCK` for the socket itself (fcntl
   reports the flag, `recv()` still blocks), which left libVLC's interruptible
   read loops stuck and `libvlc_media_player_stop()` waiting forever after a
-  stream had played. `platforms/haiku/SocketGuard.cpp` interposes `socket()`
+  stream had played. `platforms/renkuos/SocketGuard.cpp` interposes `socket()`
   and `accept4()` and sets the flag with `fcntl()` instead.
-- Haiku's `BHttpRequest` does not follow a 307 even with `SetFollowLocation`,
+- RenkuOS's `BHttpRequest` does not follow a 307 even with `SetFollowLocation`,
   so `HaikuHttpClient` follows redirects itself and reports the final URL. The
   relay passes that URL to the backend when it declines a channel: libVLC on
-  Haiku ends its input silently on such a redirect. `VlcMediaPlayer` also runs
+  RenkuOS ends its input silently on such a redirect. `VlcMediaPlayer` also runs
   a watchdog that turns an input that ended without an event into an error.
-- Closing the window mid-stream could leave the app running on Haiku: the
+- Closing the window mid-stream could leave the app running on RenkuOS: the
   window thread sat in `libvlc_media_player_stop()`, joining the input
   thread, which was joining a decoder thread that never came back from
   libVLC's Haiku audio output. `MainWindow::QuitRequested()` now hides the
   window at once and starts a watchdog that `_exit()`s the team if the
   orderly shutdown has not finished in four seconds. Nothing is saved at
   exit, so nothing is lost.
-- Haiku `make uninstall` removes the app directory (binary, bundled `.so`
+- RenkuOS `make uninstall` removes the app directory (binary, bundled `.so`
   files, `vlc/plugins`), the Deskbar link and the snapshot folder, but not the
   cache in `~/config/settings/RTelevision`.
 - The copied VLC plugin tree has a stale `plugins.dat` (copying changes mtimes),

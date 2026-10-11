@@ -4,7 +4,7 @@ R Television's own code is MIT (see [LICENSE](LICENSE)). It bundles or links
 the components below, and several of them ask for a notice in return. This file
 is that notice; the full licence texts it refers to are in [licenses/](licenses).
 
-## libVLC 3.0.23 - macOS, Linux, Haiku x86_64
+## libVLC 3.0.23 - macOS, Linux, RenkuOS x86_64
 
 The playback backend on every platform that has a build of it.
 
@@ -12,8 +12,8 @@ The playback backend on every platform that has a build of it.
   <https://www.videolan.org/vlc/>, unpacked into `third_party/vlc-macos/`, which
   is committed to this repository. Linux: the distribution's own `libvlc5`,
   `libvlccore9` and plugin packages, downloaded and unpacked by
-  `platforms/linux/fetch-libvlc.sh`. Haiku: the HaikuPorts `.hpkg` files,
-  extracted without being installed by `platforms/haiku/fetch-libvlc.sh`.
+  `platforms/linux/fetch-libvlc.sh`. RenkuOS: the HaikuPorts `.hpkg` files,
+  extracted without being installed by `platforms/renkuos/fetch-libvlc.sh`.
 - **Licence.** `libvlc` and `libvlccore` are **LGPL-2.1-or-later**. The plugin
   tree that ships with an official VLC build also contains GPL-2.0-or-later
   modules, so the bundled media stack as a whole should be treated as
@@ -24,11 +24,11 @@ The playback backend on every platform that has a build of it.
   files under the application's `lib/` and `plugins/` directories, or point
   `VLC_PLUGIN_PATH` elsewhere. Nothing is statically linked.
 - **Source.** VideoLAN publishes the matching sources at
-  <https://www.videolan.org/vlc/download-sources.html>; the Linux and Haiku
+  <https://www.videolan.org/vlc/download-sources.html>; the Linux and RenkuOS
   builds come from the distribution packages, whose sources the distribution
   carries (`apt-get source vlc`, HaikuPorts' recipes).
 
-## FFmpeg 6.1.2 - Haiku arm64
+## FFmpeg 6.1.2 - RenkuOS arm64
 
 The playback backend where no libVLC exists, decoded through
 `shared/core/FFmpegMediaPlayer.cpp`.
@@ -44,20 +44,20 @@ The playback backend where no libVLC exists, decoded through
   [licenses/LGPL-2.1.txt](licenses/LGPL-2.1.txt).
 - **Modifications.** None; only the configure flags select a smaller feature
   set. The result is five shared objects, linked dynamically and replaceable.
-- **OpenSSL.** The Haiku build uses `--enable-openssl` for HTTPS and therefore
-  links Haiku's own `libssl.so.3` / `libcrypto.so.3`. OpenSSL 3 is Apache-2.0
+- **OpenSSL.** The RenkuOS build uses `--enable-openssl` for HTTPS and therefore
+  links RenkuOS's own `libssl.so.3` / `libcrypto.so.3`. OpenSSL 3 is Apache-2.0
   and is not shipped by this project.
 
-## GMA500 hardware H.264 module - Haiku x86
+## GMA500 hardware H.264 module - RenkuOS x86
 
 `libmsvdx_plugin.so`, a libVLC decoder module built from
-`platforms/haiku/msvdx/` and installed into `vlc/plugins/codec`. It links
+`platforms/renkuos/msvdx/` and installed into `vlc/plugins/codec`. It links
 dynamically against libVLC's `libvlccore`, like every other plugin there.
 
 - **Chromium's H.264 parser and decoder** (`msvdx/chromium/`): unmodified
   copies of `media/video/h264_*` and `media/gpu/h264_*` from Chromium
   114.0.5735.199. **BSD-3-Clause**, full text in
-  [platforms/haiku/msvdx/chromium/LICENSE](platforms/haiku/msvdx/chromium/LICENSE).
+  [platforms/renkuos/msvdx/chromium/LICENSE](platforms/renkuos/msvdx/chromium/LICENSE).
 - **psb_video** (`msvdx/hw/psb/`, `msvdx/hw/hwdefs/`): the H.264 command
   builder of Intel's GMA500 VA-API driver, from its first open release (2010).
   **MIT**; the notice is at the top of each file. One line changed in
@@ -83,7 +83,7 @@ MIT/X-style permissive licence: <https://curl.se/docs/copyright.html>.
 
 Linked, never shipped: Cocoa and the macOS SDK (Apple's own terms); GTK3 and
 GLib on Linux, both LGPL-2.1-or-later; the Haiku Be API (`libbe`), MIT, with
-the playlist fetched through Haiku's network services on that platform.
+the playlist fetched through RenkuOS's network services on that platform.
 
 ## Channel list - iptv-org
 

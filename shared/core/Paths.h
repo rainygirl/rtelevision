@@ -8,7 +8,7 @@ namespace tv {
 // Directory for the offline playlist cache and settings. Created on demand.
 std::string appDataDir();
 
-// Joins with the platform separator ('/' on macOS, Haiku and Linux).
+// Joins with the platform separator ('/' on macOS, RenkuOS and Linux).
 std::string joinPath(const std::string& a, const std::string& b);
 
 bool ensureDirectory(const std::string& path);

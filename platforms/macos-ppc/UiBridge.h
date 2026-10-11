@@ -70,7 +70,7 @@ void rtv_attach_video(RtvApp*, void* nsView);
 /* Software video.
    This hardware has no Quartz Extreme, and libVLC's OpenGL output refuses to
    start without it, so the picture is decoded into a buffer the front end draws
-   itself - the same path the Haiku front end uses. The backend fixes the buffer
+   itself - the same path the RenkuOS front end uses. The backend fixes the buffer
    size, so the view letterboxes what it gets; the frame callback arrives on a
    decoder thread. */
 typedef void (*RtvFrameCallback)(void* context);

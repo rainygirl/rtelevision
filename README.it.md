@@ -12,7 +12,7 @@ italiano, giapponese o coreano).
 |---|---|---|
 | macOS 11 o successivo, Apple Silicon o Intel | si scarica l'app | niente |
 | Linux x86_64: Debian, Ubuntu, Linux Mint | si compila con un solo comando | una connessione a internet e, una volta, la tua password |
-| Haiku x86_64, x86 a 32 bit o arm64 | si installa con `pkgman` | una connessione a internet |
+| RenkuOS x86_64, x86 a 32 bit o arm64 | si installa con `pkgman` | una connessione a internet |
 
 Non serve installare VLC da nessuna parte: R Television ha il suo.
 
@@ -64,11 +64,11 @@ Da quel momento si apre come qualsiasi altra app.
 
 Provato su Linux Mint 20.3 e Ubuntu 20.04.
 
-### Haiku
+### RenkuOS
 
-![R Television su Haiku](docs/screenshots/haiku.png)
+![R Television su RenkuOS](docs/screenshots/haiku.png)
 
-R Television è pacchettizzato per ogni architettura di Haiku e porta la propria
+R Television è pacchettizzato per ogni architettura di RenkuOS e porta la propria
 libreria multimediale dentro il pacchetto, quindi VLC non va mai installato:
 
 ```sh
@@ -90,13 +90,13 @@ Per compilarlo da sé, scarica il progetto come file ZIP, decomprimilo, apri il
 Terminale nella cartella ed esegui:
 
 ```sh
-cd platforms/haiku
+cd platforms/renkuos
 ./install.sh
 ```
 
 I pacchetti mancanti (`gcc`, `haiku_devel`) vengono installati con `pkgman`; il
 resto del sistema non viene toccato. Le note di compilazione sono in
-[AGENTS.md](AGENTS.md#haiku) (in inglese).
+[AGENTS.md](AGENTS.md#renkuos) (in inglese).
 
 Sul Sony VAIO P (chipset Intel GMA500) il pacchetto x86 decodifica i canali
 H.264 con il decoder video del chipset, usando circa meta' della CPU della
@@ -119,7 +119,7 @@ Linux (dalla cartella del progetto):
 cd platforms/linux && make uninstall
 ```
 
-Haiku:
+RenkuOS:
 
 Se installato dal repository:
 
@@ -135,7 +135,7 @@ rm -rf ~/config/non-packaged/apps/RTelevision ~/config/settings/deskbar/menu/App
 rm -rf ~/config/non-packaged/data/RTelevision ~/config/settings/RTelevision
 ```
 
-La seconda riga di macOS e la cartella `settings` di Haiku contengono la cache
+La seconda riga di macOS e la cartella `settings` di RenkuOS contengono la cache
 dei canali e i tuoi preferiti.
 
 ## Licenza
