@@ -212,6 +212,10 @@ make catalina                # build/x86_64-macos10.15/R Television.app
 make dist-catalina           # dist/R-Television-<version>-macOS-Catalina.dmg
 ```
 
+The four READMEs list the SHA-256 of every published `.dmg`. Rebuilding a dmg
+changes its hash: update all four READMEs in the same commit
+(`shasum -a 256 platforms/macos/dist/*.dmg`).
+
 The bundle is ad-hoc signed; there is no Developer ID, so it cannot be
 notarized. The READMEs explain how users allow the first launch.
 

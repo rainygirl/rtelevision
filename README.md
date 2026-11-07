@@ -32,6 +32,19 @@ because the bundling step can only unpack `.deb` packages.
 2. Open it and drag **R Television** onto **Applications**.
 3. Open R Television from Applications.
 
+To make sure the download is complete and unaltered, compare its SHA-256
+checksum in Terminal with the one below. If it differs, do not open it;
+download it again.
+
+| File | SHA-256 |
+|---|---|
+| `R-Television-1.0.0-macOS.dmg` | `efb9f6324894fe978ca3acebc3c00008faca5f9dee5a48d540ced5c8ec211885` |
+| `R-Television-1.0.0-macOS-Catalina.dmg` | `33eaf6fa212f446ae404665b222f3ad3f221ebe45d4325eac3049de02e28bf09` |
+
+```sh
+shasum -a 256 ~/Downloads/R-Television-1.0.0-macOS*.dmg
+```
+
 The app is not signed with an Apple Developer ID, so macOS blocks it the first
 time. Allow it once, in whichever way suits you:
 

@@ -28,6 +28,18 @@
 2. 열어서 **R Television**을 **응용 프로그램** 폴더로 끌어다 놓습니다.
 3. 응용 프로그램 폴더에서 R Television을 엽니다.
 
+내려받은 파일이 온전하고 변조되지 않았는지 확인하려면 터미널에서 SHA-256
+체크섬을 계산해 아래 값과 비교하세요. 다르면 열지 말고 다시 내려받으세요.
+
+| 파일 | SHA-256 |
+|---|---|
+| `R-Television-1.0.0-macOS.dmg` | `efb9f6324894fe978ca3acebc3c00008faca5f9dee5a48d540ced5c8ec211885` |
+| `R-Television-1.0.0-macOS-Catalina.dmg` | `33eaf6fa212f446ae404665b222f3ad3f221ebe45d4325eac3049de02e28bf09` |
+
+```sh
+shasum -a 256 ~/Downloads/R-Television-1.0.0-macOS*.dmg
+```
+
 Apple Developer ID로 서명한 앱이 아니어서 처음에는 macOS가 실행을 막습니다. 아래 방법 중
 편한 것으로 한 번만 허용하면 됩니다.
 

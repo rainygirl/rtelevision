@@ -29,6 +29,19 @@ Non serve installare VLC da nessuna parte: R Television ha il suo.
 2. Aprilo e trascina **R Television** in **Applicazioni**.
 3. Apri R Television da Applicazioni.
 
+Per verificare che il file scaricato sia completo e non alterato, confronta
+il suo checksum SHA-256 nel Terminale con quello qui sotto. Se è diverso,
+non aprirlo e scaricalo di nuovo.
+
+| File | SHA-256 |
+|---|---|
+| `R-Television-1.0.0-macOS.dmg` | `efb9f6324894fe978ca3acebc3c00008faca5f9dee5a48d540ced5c8ec211885` |
+| `R-Television-1.0.0-macOS-Catalina.dmg` | `33eaf6fa212f446ae404665b222f3ad3f221ebe45d4325eac3049de02e28bf09` |
+
+```sh
+shasum -a 256 ~/Downloads/R-Television-1.0.0-macOS*.dmg
+```
+
 L'app non è firmata con un Developer ID di Apple, perciò la prima volta macOS la
 blocca. Basta sbloccarla una volta, nel modo che preferisci:
 
