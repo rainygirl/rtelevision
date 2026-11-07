@@ -28,6 +28,7 @@ One portable C++17 core, one native front end per platform:
 | Platform | Front end | Media backend | Bundled |
 |---|---|---|---|
 | macOS arm64 / x86_64 | Cocoa (Objective-C++) | libVLC 3.0.23 | yes, 343 plugins |
+| macOS 10.15 Catalina x86_64 | the same Cocoa front end | libVLC 3.0.23 | yes, 343 plugins |
 | Linux x86_64 | GTK3 | libVLC 3.0.9 from the distribution | yes, 353 plugins |
 | RenkuOS x86_64 | BeAPI | libVLC 3.0.23 | yes, pruned from HaikuPorts |
 | RenkuOS x86 (x86_gcc2 hybrid) | BeAPI | libVLC 3.0.23 | yes, unpacked from HaikuPorts |
@@ -197,6 +198,18 @@ make run                     # build and launch
 make cli                     # rtv-cli, no libVLC needed
 make install                 # copy to /Applications (INSTALL_DIR to change)
 make dist                    # universal dist/R-Television-<version>-macOS.dmg
+```
+
+The Catalina build is the same source with `MACOS_MIN=10.15`, x86_64 only
+(10.15 never ran on Apple Silicon), in `build/x86_64-macos10.15/`. The one
+API newer than 10.15 is SF Symbols; below macOS 11 `symbolImage:` falls back
+to `TVDrawnSymbol()`, which draws the eight transport icons with
+`NSBezierPath`. libVLC 3.0.23 itself targets 10.7, and every libcurl call
+predates Catalina's system libcurl 7.64.
+
+```sh
+make catalina                # build/x86_64-macos10.15/R Television.app
+make dist-catalina           # dist/R-Television-<version>-macOS-Catalina.dmg
 ```
 
 The bundle is ad-hoc signed; there is no Developer ID, so it cannot be

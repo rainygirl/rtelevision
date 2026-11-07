@@ -28,7 +28,7 @@
     <key>CFBundleVersion</key>
     <string>@VERSION@</string>
     <key>LSMinimumSystemVersion</key>
-    <string>11.0</string>
+    <string>@MIN_OS@</string>
     <key>NSHighResolutionCapable</key>
     <true/>
     <key>NSSupportsAutomaticGraphicsSwitching</key>

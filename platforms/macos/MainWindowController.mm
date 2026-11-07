@@ -404,23 +404,110 @@
     return pane;
 }
 
+// macOS 10.15 has no SF Symbols: the Catalina build draws the few it uses as
+// template images, which the button shades grey like the symbols.
+static NSImage* TVDrawnSymbol(NSString* name, NSString* description) {
+    NSImage* image = [NSImage imageWithSize:NSMakeSize(16, 16)
+                                    flipped:NO
+                             drawingHandler:^BOOL(NSRect r) {
+        [NSColor.blackColor set];
+        NSBezierPath* p = [NSBezierPath bezierPath];
+        BOOL fill = [name hasSuffix:@".fill"];
+        if ([name hasPrefix:@"play"]) {
+            [p moveToPoint:NSMakePoint(4, 2)];
+            [p lineToPoint:NSMakePoint(14, 8)];
+            [p lineToPoint:NSMakePoint(4, 14)];
+            [p closePath];
+        } else if ([name hasPrefix:@"pause"]) {
+            [p appendBezierPathWithRect:NSMakeRect(3.5, 2, 3.5, 12)];
+            [p appendBezierPathWithRect:NSMakeRect(9, 2, 3.5, 12)];
+        } else if ([name hasPrefix:@"stop"]) {
+            [p appendBezierPathWithRoundedRect:NSMakeRect(3, 3, 10, 10) xRadius:1.5 yRadius:1.5];
+        } else if ([name hasPrefix:@"star"]) {
+            for (int i = 0; i < 10; ++i) {
+                double a = M_PI / 2 + i * M_PI / 5;
+                double radius = (i % 2) ? 3.0 : 7.0;
+                NSPoint pt = NSMakePoint(8 + radius * cos(a), 7.5 + radius * sin(a));
+                if (i == 0) [p moveToPoint:pt]; else [p lineToPoint:pt];
+            }
+            [p closePath];
+            p.lineJoinStyle = NSLineJoinStyleRound;
+        } else if ([name hasPrefix:@"speaker"]) {
+            [p moveToPoint:NSMakePoint(1.5, 5.5)];
+            [p lineToPoint:NSMakePoint(4.5, 5.5)];
+            [p lineToPoint:NSMakePoint(8.5, 2)];
+            [p lineToPoint:NSMakePoint(8.5, 14)];
+            [p lineToPoint:NSMakePoint(4.5, 10.5)];
+            [p lineToPoint:NSMakePoint(1.5, 10.5)];
+            [p closePath];
+            [p fill];
+            NSBezierPath* s = [NSBezierPath bezierPath];
+            s.lineWidth = 1.3;
+            s.lineCapStyle = NSLineCapStyleRound;
+            if ([name containsString:@"slash"]) {
+                [s moveToPoint:NSMakePoint(10.5, 5.5)];
+                [s lineToPoint:NSMakePoint(15, 10.5)];
+                [s moveToPoint:NSMakePoint(10.5, 10.5)];
+                [s lineToPoint:NSMakePoint(15, 5.5)];
+            } else {
+                [s appendBezierPathWithArcWithCenter:NSMakePoint(8.5, 8) radius:3.5
+                                          startAngle:-45 endAngle:45];
+                [s moveToPoint:NSMakePoint(8.5 + 6 * cos(M_PI / 4), 8 - 6 * sin(M_PI / 4))];
+                [s appendBezierPathWithArcWithCenter:NSMakePoint(8.5, 8) radius:6
+                                          startAngle:-45 endAngle:45];
+            }
+            [s stroke];
+            return YES;
+        } else {  // arrow.up.left.and.arrow.down.right
+            p.lineWidth = 1.5;
+            p.lineCapStyle = NSLineCapStyleRound;
+            p.lineJoinStyle = NSLineJoinStyleRound;
+            [p moveToPoint:NSMakePoint(2.5, 13.5)];
+            [p lineToPoint:NSMakePoint(6.5, 9.5)];
+            [p moveToPoint:NSMakePoint(2.5, 9.5)];
+            [p lineToPoint:NSMakePoint(2.5, 13.5)];
+            [p lineToPoint:NSMakePoint(6.5, 13.5)];
+            [p moveToPoint:NSMakePoint(13.5, 2.5)];
+            [p lineToPoint:NSMakePoint(9.5, 6.5)];
+            [p moveToPoint:NSMakePoint(9.5, 2.5)];
+            [p lineToPoint:NSMakePoint(13.5, 2.5)];
+            [p lineToPoint:NSMakePoint(13.5, 6.5)];
+            [p stroke];
+            return YES;
+        }
+        if (fill) {
+            [p fill];
+        } else {
+            p.lineWidth = 1.2;
+            [p stroke];
+        }
+        return YES;
+    }];
+    image.accessibilityDescription = description;
+    [image setTemplate:YES];
+    return image;
+}
+
 // Monochrome transport icons. A plain template image would be drawn in the
 // system accent colour; a hierarchical configuration in the label colour keeps
 // them grey and still lets them follow light/dark appearance.
 - (NSImage*)symbolImage:(NSString*)symbolName description:(NSString*)description {
-    NSImage* image = [NSImage imageWithSystemSymbolName:symbolName
-                               accessibilityDescription:description];
-    if (@available(macOS 12.0, *)) {
-        NSImageSymbolConfiguration* configuration =
-            [NSImageSymbolConfiguration configurationWithHierarchicalColor:NSColor.labelColor];
-        NSImage* configured = [image imageWithSymbolConfiguration:configuration];
-        if (configured != nil) {
-            [configured setTemplate:NO];  // `template` is a keyword in Objective-C++
-            return configured;
+    if (@available(macOS 11.0, *)) {
+        NSImage* image = [NSImage imageWithSystemSymbolName:symbolName
+                                   accessibilityDescription:description];
+        if (@available(macOS 12.0, *)) {
+            NSImageSymbolConfiguration* configuration =
+                [NSImageSymbolConfiguration configurationWithHierarchicalColor:NSColor.labelColor];
+            NSImage* configured = [image imageWithSymbolConfiguration:configuration];
+            if (configured != nil) {
+                [configured setTemplate:NO];  // `template` is a keyword in Objective-C++
+                return configured;
+            }
         }
+        [image setTemplate:YES];
+        return image;
     }
-    [image setTemplate:YES];
-    return image;
+    return TVDrawnSymbol(symbolName, description);
 }
 
 - (NSButton*)iconButton:(NSString*)symbolName action:(SEL)action tooltip:(NSString*)tooltip {

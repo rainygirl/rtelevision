@@ -6,6 +6,8 @@
 #   make run             build and launch
 #   make install         copy the bundle to /Applications
 #   make dist            universal .dmg in dist/, for people who will not build
+#   make catalina        Intel build for macOS 10.15 (drawn icons, no SF Symbols)
+#   make dist-catalina   that build as its own .dmg
 #   make clean
 
 SHARED_DIR := ../../shared
@@ -19,7 +21,14 @@ empty :=
 space := $(empty) $(empty)
 
 ARCHS  ?= $(shell uname -m)
+# Oldest macOS the bundle starts on. 11.0 by default; the Catalina build sets
+# 10.15 and goes to its own build directory, so the two never share objects.
+MACOS_MIN ?= 11.0
+ifeq ($(MACOS_MIN),11.0)
 BUILD  := build/$(subst $(space),-,$(ARCHS))
+else
+BUILD  := build/$(subst $(space),-,$(ARCHS))-macos$(MACOS_MIN)
+endif
 APP    := $(BUILD)/$(APP_NAME).app
 # Directory mtimes do not track changes to nested files, so the bundle is
 # tracked with a stamp instead.
@@ -34,6 +43,7 @@ NOTICES     := ../../LICENSE ../../THIRD-PARTY-NOTICES.md
 INSTALL_DIR ?= /Applications
 DIST_DIR    := dist
 DMG         := $(DIST_DIR)/R-Television-$(VERSION)-macOS.dmg
+DMG_CATALINA := $(DIST_DIR)/R-Television-$(VERSION)-macOS-Catalina.dmg
 
 UI_SRC := main.mm AppDelegate.mm BundlePaths.mm MainWindowController.mm
 SRC    := $(CORE_SRC) $(CORE_SRC_VLC) $(CORE_SRC_HTTP_CURL) $(UI_SRC)
@@ -41,15 +51,15 @@ OBJ    := $(addprefix $(BUILD)/obj/,$(notdir $(SRC:.cpp=.o)))
 OBJ    := $(OBJ:.mm=.o)
 
 ARCHFLAGS := $(foreach a,$(ARCHS),-arch $(a))
-CXXFLAGS  := $(CORE_CXXFLAGS) $(ARCHFLAGS) -mmacosx-version-min=11.0 -I. -I$(VLC_DIR)/include
+CXXFLAGS  := $(CORE_CXXFLAGS) $(ARCHFLAGS) -mmacosx-version-min=$(MACOS_MIN) -I. -I$(VLC_DIR)/include
 OBJCXXFLAGS := $(CXXFLAGS) -fobjc-arc
-LDFLAGS   := $(ARCHFLAGS) -mmacosx-version-min=11.0 \
+LDFLAGS   := $(ARCHFLAGS) -mmacosx-version-min=$(MACOS_MIN) \
              -framework Cocoa -lcurl \
              -L$(VLC_DIR)/lib -lvlc -Wl,-rpath,@executable_path/lib
 
 VPATH := $(SHARED_DIR)/core:$(SHARED_DIR)/tools:.
 
-.PHONY: all run install clean cli deps dist
+.PHONY: all run install clean cli deps dist catalina dist-catalina
 
 all: $(STAMP)
 
@@ -70,7 +80,8 @@ $(STAMP): $(OBJ) Info.plist.in $(SEED) $(ICON) $(NOTICES)
 	$(CXX) $(OBJ) $(LDFLAGS) -o "$(MACOS)/$(APP_NAME)"
 	sed -e 's/@EXECUTABLE@/$(APP_NAME)/' \
 	    -e 's/@BUNDLE_ID@/$(BUNDLE_ID)/' \
-	    -e 's/@VERSION@/$(VERSION)/' Info.plist.in > "$(APP)/Contents/Info.plist"
+	    -e 's/@VERSION@/$(VERSION)/' \
+	    -e 's/@MIN_OS@/$(MACOS_MIN)/' Info.plist.in > "$(APP)/Contents/Info.plist"
 	cp $(SEED) "$(RES)/seed-playlist.m3u"
 	cp $(ICON) "$(RES)/AppIcon.icns"
 	@# The bundled libVLC is LGPL/GPL: its notices travel with the binaries.
@@ -94,7 +105,7 @@ cli: $(BUILD)/rtv-cli
 # needs no libVLC at runtime.
 $(BUILD)/rtv-cli: $(CORE_SRC) $(CORE_SRC_NULL) $(CORE_SRC_HTTP_CURL) $(CLI_SRC)
 	@mkdir -p $(BUILD)
-	$(CXX) $(CORE_CXXFLAGS) $(ARCHFLAGS) -mmacosx-version-min=11.0 $^ -lcurl -o $@
+	$(CXX) $(CORE_CXXFLAGS) $(ARCHFLAGS) -mmacosx-version-min=$(MACOS_MIN) $^ -lcurl -o $@
 
 run: $(STAMP)
 	"$(MACOS)/$(APP_NAME)"
@@ -119,6 +130,22 @@ dist:
 	hdiutil create -volname "$(APP_NAME)" -srcfolder $(DIST_DIR)/stage -ov -format UDZO "$(DMG)"
 	@rm -rf $(DIST_DIR)/stage
 	@echo "disk image: $(DMG)"
+
+# macOS 10.15 runs only on Intel, so the Catalina build is x86_64 alone.
+catalina:
+	$(MAKE) ARCHS=x86_64 MACOS_MIN=10.15
+
+dist-catalina:
+	$(MAKE) catalina
+	@rm -rf $(DIST_DIR)/stage
+	@mkdir -p $(DIST_DIR)/stage
+	ditto "build/x86_64-macos10.15/$(APP_NAME).app" "$(DIST_DIR)/stage/$(APP_NAME).app"
+	ln -s /Applications "$(DIST_DIR)/stage/Applications"
+	codesign --verify --deep --strict "$(DIST_DIR)/stage/$(APP_NAME).app"
+	@rm -f "$(DMG_CATALINA)"
+	hdiutil create -volname "$(APP_NAME)" -srcfolder $(DIST_DIR)/stage -ov -format UDZO "$(DMG_CATALINA)"
+	@rm -rf $(DIST_DIR)/stage
+	@echo "disk image: $(DMG_CATALINA)"
 
 clean:
 	rm -rf build $(DIST_DIR)

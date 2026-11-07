@@ -10,6 +10,7 @@
 | 시스템 | 설치 방법 | 그 밖에 필요한 것 |
 |---|---|---|
 | macOS 11 이상, Apple Silicon 또는 Intel | 앱 다운로드 | 없음 |
+| macOS 10.15 Catalina, Intel | Catalina용 앱 다운로드 | 없음 |
 | Linux x86_64: Debian, Ubuntu, Linux Mint | 명령 한 줄로 빌드 | 인터넷 연결, 비밀번호 한 번 |
 | RenkuOS x86_64, 32비트 x86, arm64 | `pkgman`으로 설치 | 인터넷 연결 |
 
@@ -22,6 +23,8 @@
 ![macOS의 R Television](docs/screenshots/macos.png)
 
 1. [`R-Television-1.0.0-macOS.dmg`](platforms/macos/dist/R-Television-1.0.0-macOS.dmg)를 다운로드합니다.
+   macOS 10.15 Catalina에서는 대신
+   [`R-Television-1.0.0-macOS-Catalina.dmg`](platforms/macos/dist/R-Television-1.0.0-macOS-Catalina.dmg)를 다운로드합니다.
 2. 열어서 **R Television**을 **응용 프로그램** 폴더로 끌어다 놓습니다.
 3. 응용 프로그램 폴더에서 R Television을 엽니다.
 
@@ -30,7 +33,7 @@ Apple Developer ID로 서명한 앱이 아니어서 처음에는 macOS가 실행
 
 - **macOS 15 이상:** 경고가 뜬 뒤 **시스템 설정 > 개인정보 보호 및 보안**을 열고
   *"R Television"이(가) 차단되었습니다* 항목까지 내려가 **그래도 열기**를 누릅니다.
-- **macOS 11~14:** 응용 프로그램 폴더에서 앱을 Control 키를 누른 채 클릭하고 **열기**를
+- **macOS 10.15~14:** 응용 프로그램 폴더에서 앱을 Control 키를 누른 채 클릭하고 **열기**를
   고른 다음, 다시 **열기**를 누릅니다.
 - **터미널(모든 버전. "손상되었기 때문에 열 수 없습니다"라고 나올 때도 이걸로 풀립니다):**
 

@@ -11,6 +11,7 @@ italiano, giapponese o coreano).
 | Sistema | Come si installa | Cos'altro serve |
 |---|---|---|
 | macOS 11 o successivo, Apple Silicon o Intel | si scarica l'app | niente |
+| macOS 10.15 Catalina, Intel | si scarica l'app per Catalina | niente |
 | Linux x86_64: Debian, Ubuntu, Linux Mint | si compila con un solo comando | una connessione a internet e, una volta, la tua password |
 | RenkuOS x86_64, x86 a 32 bit o arm64 | si installa con `pkgman` | una connessione a internet |
 
@@ -23,6 +24,8 @@ Non serve installare VLC da nessuna parte: R Television ha il suo.
 ![R Television su macOS](docs/screenshots/macos.png)
 
 1. Scarica [`R-Television-1.0.0-macOS.dmg`](platforms/macos/dist/R-Television-1.0.0-macOS.dmg).
+   Su macOS 10.15 Catalina scarica invece
+   [`R-Television-1.0.0-macOS-Catalina.dmg`](platforms/macos/dist/R-Television-1.0.0-macOS-Catalina.dmg).
 2. Aprilo e trascina **R Television** in **Applicazioni**.
 3. Apri R Television da Applicazioni.
 
@@ -32,7 +35,7 @@ blocca. Basta sbloccarla una volta, nel modo che preferisci:
 - **macOS 15 e successivi:** dopo l'avviso apri **Impostazioni di Sistema >
   Privacy e sicurezza**, scorri fino a *"R Television" è stato bloccato* e fai
   clic su **Apri comunque**.
-- **Da macOS 11 a 14:** fai clic sull'app in Applicazioni tenendo premuto Ctrl,
+- **Da macOS 10.15 a 14:** fai clic sull'app in Applicazioni tenendo premuto Ctrl,
   scegli **Apri** e poi di nuovo **Apri**.
 - **Dal Terminale, con qualsiasi versione** (risolve anche il messaggio
   *"è danneggiata e non può essere aperta"*):

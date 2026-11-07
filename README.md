@@ -11,6 +11,7 @@ English · [Italiano](README.it.md) · [日本語](README.ja.md) · [한국어](
 | System | How to install | What else you need |
 |---|---|---|
 | macOS 11 or newer, Apple Silicon or Intel | download the app | nothing |
+| macOS 10.15 Catalina, Intel | download the Catalina app | nothing |
 | Linux x86_64: Debian, Ubuntu, Linux Mint | build it with one command | an internet connection, and your password once |
 | Linux x86_64: Fedora | build it with one command | the same, plus VLC from RPM Fusion |
 | RenkuOS x86_64, 32-bit x86 or arm64 | install it with `pkgman` | an internet connection |
@@ -26,6 +27,8 @@ because the bundling step can only unpack `.deb` packages.
 ![R Television on macOS](docs/screenshots/macos.png)
 
 1. Download [`R-Television-1.0.0-macOS.dmg`](platforms/macos/dist/R-Television-1.0.0-macOS.dmg).
+   On macOS 10.15 Catalina, download
+   [`R-Television-1.0.0-macOS-Catalina.dmg`](platforms/macos/dist/R-Television-1.0.0-macOS-Catalina.dmg) instead.
 2. Open it and drag **R Television** onto **Applications**.
 3. Open R Television from Applications.
 
@@ -35,7 +38,7 @@ time. Allow it once, in whichever way suits you:
 - **macOS 15 and later:** after the warning, open **System Settings >
   Privacy & Security**, scroll down to *"R Television" was blocked* and click
   **Open Anyway**.
-- **macOS 11 to 14:** Control-click the app in Applications, choose **Open**,
+- **macOS 10.15 to 14:** Control-click the app in Applications, choose **Open**,
   then **Open** again.
 - **Terminal, on any version** (this also fixes *"is damaged and can't be
   opened"*):
