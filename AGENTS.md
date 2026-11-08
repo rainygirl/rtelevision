@@ -123,7 +123,14 @@ file and is moved into place with `rename()`.
 duplicate on an idle connection) and lists only segments it already holds. The
 player's first playlist request is held until 20 s of video is ready (at most
 40 s), unless the server delivers at twice real time or more. Adaptive
-(multi-variant) streams and VOD go to the player untouched.
+(multi-variant) streams and VOD go to the player untouched, with one
+exception: a master whose variants name different video codecs in `CODECS`
+(NHK General TV mixes HEVC and H.264 in fMP4 with MPEG-2 in MPEG-TS, each with
+its own media sequence numbers) is cut down to the codec family with the most
+variants, H.264 on a tie. libVLC otherwise switches from HEVC to MPEG-2, asks
+for the wrong segments and freezes after about a second. The cut master is
+served from 127.0.0.1 with absolute variant URIs; if one variant is left, it
+is relayed like any single-rendition stream.
 
 - Backends see the relay through the channel option `rtv-relay`: VLC adds
   `:adaptive-livedelay`, FFmpeg sets `live_start_index=0`, a 60 s

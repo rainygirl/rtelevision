@@ -182,6 +182,89 @@ size_t smallestVariant(const Playlist& playlist) {
     return best;
 }
 
+// The video codec family a variant's CODECS attribute names: "avc", "hevc",
+// "mp2v", ... Empty when the attribute is missing or names no video codec.
+std::string videoFamily(const std::string& streamInf) {
+    const std::string codecs = toLower(attributeValue(streamInf, "CODECS"));
+    size_t pos = 0;
+    while (pos < codecs.size()) {
+        size_t end = codecs.find(',', pos);
+        if (end == std::string::npos) end = codecs.size();
+        const std::string codec = trim(codecs.substr(pos, end - pos));
+        pos = end + 1;
+        const std::string tag = codec.substr(0, codec.find('.'));
+        if (tag == "avc1" || tag == "avc3") return "avc";
+        if (tag == "hvc1" || tag == "hev1") return "hevc";
+        if (tag == "dvh1" || tag == "dvhe") return "hevc";
+        if (tag == "mp4a" || tag == "ac-3" || tag == "ec-3" || tag == "opus" || tag == "flac" ||
+            tag == "mp3" || tag == "stpp" || tag == "wvtt" || tag.empty())
+            continue;
+        return tag;  // mp2v, av01, vp09, ...
+    }
+    return std::string();
+}
+
+// A master playlist whose variants use different video codecs cannot be
+// switched between: such variants are usually separate encodes with their own
+// container and their own media sequence numbers. NHK General TV offers HEVC
+// and H.264 in fMP4 and MPEG-2 in MPEG-TS; libVLC starts on the smallest HEVC
+// variant, moves up to the MPEG-2 one, asks for the wrong segment numbers and
+// stops after the first second of picture.
+//
+// Returns the master cut down to the variants of one codec family - the one
+// with the most variants, H.264 on a tie - with every URI made absolute, so it
+// can be served from anywhere. Returns an empty string when the variants all
+// share a family (or do not say), meaning there is nothing to fix. `kept` gets
+// the URL of each variant that stays.
+std::string singleCodecMaster(const std::string& text, const std::string& base,
+                              std::vector<std::string>* kept) {
+    std::vector<std::string> lines;
+    size_t pos = 0;
+    while (pos <= text.size()) {
+        size_t end = text.find('\n', pos);
+        if (end == std::string::npos) end = text.size();
+        lines.push_back(trim(text.substr(pos, end - pos)));
+        pos = end + 1;
+    }
+
+    std::map<std::string, int> count;
+    for (size_t i = 0; i < lines.size(); ++i)
+        if (startsWith(lines[i], "#EXT-X-STREAM-INF")) ++count[videoFamily(lines[i])];
+    if (count.size() < 2 || count.count("")) return std::string();
+
+    std::string family;
+    int best = 0;
+    for (const auto& entry : count) {
+        if (entry.second > best || (entry.second == best && entry.first == "avc")) {
+            family = entry.first;
+            best = entry.second;
+        }
+    }
+
+    std::string out;
+    bool takeUri = false;
+    bool dropUri = false;
+    for (const std::string& line : lines) {
+        if (line.empty()) continue;
+        if (startsWith(line, "#EXT-X-STREAM-INF")) {
+            takeUri = videoFamily(line) == family;
+            dropUri = !takeUri;
+            if (takeUri) out += line + "\n";
+        } else if (startsWith(line, "#EXT-X-I-FRAME-STREAM-INF")) {
+            continue;  // trick-play variants, likewise of mixed codecs
+        } else if (line[0] == '#') {
+            out += withAbsoluteUri(line, base) + "\n";
+        } else if (takeUri || dropUri) {
+            if (takeUri) {
+                kept->push_back(resolveUrl(base, line));
+                out += kept->back() + "\n";
+            }
+            takeUri = dropUri = false;
+        }
+    }
+    return out;
+}
+
 Playlist parsePlaylist(const std::string& text, const std::string& base) {
     Playlist playlist;
     uint64_t sequence = 0;
@@ -1219,15 +1302,26 @@ public:
     int port() const { return port_; }
 
     // Installs a session and stops the one it replaces, which is returned.
+    // Also withdraws any master playlist being served.
     std::shared_ptr<RelaySession> setSession(std::shared_ptr<RelaySession> session) {
         std::shared_ptr<RelaySession> old;
         {
             std::lock_guard<std::mutex> lock(mutex_);
             old.swap(session_);
             session_ = std::move(session);
+            masterPath_.clear();
+            masterBody_.reset();
         }
         if (old) old->stop();
         return old;
+    }
+
+    // Serves `body` as a master playlist at `path` until the next setSession().
+    // The player fetches its variants from their own servers.
+    void setMaster(const std::string& path, const std::string& body) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        masterPath_ = path;
+        masterBody_ = std::make_shared<const std::string>(body);
     }
 
 private:
@@ -1277,9 +1371,13 @@ private:
         const std::string target = line.substr(space1 + 1, space2 - space1 - 1);
 
         std::shared_ptr<RelaySession> session;
+        std::string masterPath;
+        std::shared_ptr<const std::string> masterBody;
         {
             std::lock_guard<std::mutex> lock(mutex_);
             session = session_;
+            masterPath = masterPath_;
+            masterBody = masterBody_;
         }
 
         // The continuous MPEG-TS route, for a player with no HLS demuxer. It
@@ -1307,6 +1405,10 @@ private:
         RelayReply reply;
         if (method != "GET" && method != "HEAD") {
             reply.status = 405;
+        } else if (masterBody && path == masterPath) {
+            reply.status = 200;
+            reply.contentType = "application/vnd.apple.mpegurl";
+            reply.body = masterBody;
         } else if (session) {
             reply = session->serve(target);
         }
@@ -1339,6 +1441,8 @@ private:
     std::condition_variable idle_;
     int active_ = 0;
     std::shared_ptr<RelaySession> session_;
+    std::string masterPath_;
+    std::shared_ptr<const std::string> masterBody_;
 };
 
 // ------------------------------------------------------------------ relay
@@ -1391,6 +1495,7 @@ std::string HlsRelay::open(const Channel& channel, const std::function<bool()>& 
     close();
     if (!looksLikeHls(channel.url)) return channel.url;
 
+    std::string body;
     auto fetch = [&](const std::string& url, std::string* base) {
         HttpRequest request;
         request.url = url;
@@ -1400,6 +1505,7 @@ std::string HlsRelay::open(const Channel& channel, const std::function<bool()>& 
         request.shouldAbort = cancelled;
         HttpResponse response = http_->get(request);
         *base = response.effectiveUrl.empty() ? url : response.effectiveUrl;
+        body = response.ok() ? response.body : std::string();
         return response.ok() ? parsePlaylist(response.body, *base) : Playlist();
     };
 
@@ -1411,7 +1517,31 @@ std::string HlsRelay::open(const Channel& channel, const std::function<bool()>& 
     // has established it; the player is spared the redirect.
     const std::string directUrl = playlist.valid ? base : channel.url;
     if (playlist.valid && playlist.master) {
-        const bool adaptive = playlist.variants.size() != 1 || playlist.alternateRenditions;
+        bool adaptive = playlist.variants.size() != 1 || playlist.alternateRenditions;
+        if (adaptive && !settings_.plainTransportStream) {
+            std::vector<std::string> kept;
+            const std::string master = singleCodecMaster(body, base, &kept);
+            if (!master.empty() && kept.size() == 1 && !playlist.alternateRenditions) {
+                // One variant left: an ordinary single-rendition stream.
+                logf(settings_.verbose, "%s: mixed video codecs, keeping %s", channel.name.c_str(),
+                     kept[0].c_str());
+                playlist.variants = kept;
+                adaptive = false;
+            } else if (!master.empty()) {
+                std::lock_guard<std::mutex> lock(mutex_);
+                if (!server_) {
+                    std::unique_ptr<RelayServer> server(new RelayServer(settings_.verbose));
+                    std::string error;
+                    if (!server->start(&error)) return directUrl;
+                    server_ = std::move(server);
+                }
+                const std::string path = "/" + newSessionId() + "/master.m3u8";
+                server_->setMaster(path, master);
+                logf(settings_.verbose, "%s: mixed video codecs, serving %zu of %zu variants",
+                     channel.name.c_str(), kept.size(), playlist.variants.size());
+                return "http://127.0.0.1:" + std::to_string(server_->port()) + path;
+            }
+        }
         // A player that cannot read HLS cannot pick a rendition either, so in
         // plain-TS mode the relay chooses the smallest instead of declining.
         if (adaptive && !settings_.plainTransportStream) {

@@ -10,7 +10,9 @@
 //
 // Only live media playlists with a single rendition are relayed. Adaptive
 // streams already cope by dropping to a lower quality, and VOD has no live edge
-// to fall behind, so both reach the player untouched.
+// to fall behind, so both reach the player untouched - except an adaptive
+// master that mixes video codecs, which the relay cuts down to one codec family
+// and serves itself (see singleCodecMaster() in HlsRelay.cpp).
 #pragma once
 
 #include <functional>

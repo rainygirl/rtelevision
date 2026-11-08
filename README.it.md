@@ -35,8 +35,8 @@ non aprirlo e scaricalo di nuovo.
 
 | File | SHA-256 |
 |---|---|
-| `R-Television-1.0.0-macOS.dmg` | `efb9f6324894fe978ca3acebc3c00008faca5f9dee5a48d540ced5c8ec211885` |
-| `R-Television-1.0.0-macOS-Catalina.dmg` | `33eaf6fa212f446ae404665b222f3ad3f221ebe45d4325eac3049de02e28bf09` |
+| `R-Television-1.0.0-macOS.dmg` | `cd44a9834d50b646e13d8a3221ff1cb2b86e4e7f49c1f91da78ceb932b861a60` |
+| `R-Television-1.0.0-macOS-Catalina.dmg` | `26be0195dbea824c04602b1131bad35cee980324ad52e33c41308904e2ec1cae` |
 
 ```sh
 shasum -a 256 ~/Downloads/R-Television-1.0.0-macOS*.dmg
