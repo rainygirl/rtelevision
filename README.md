@@ -180,4 +180,5 @@ unmodified under Intel's licence, which is installed with it.
 
 ## AI disclosure
 
-This program was written with Claude.
+Parts of R Television were developed with the assistance of AI coding tools
+(Anthropic's Claude). All code has been reviewed and tested by the author.

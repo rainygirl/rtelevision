@@ -153,6 +153,7 @@ MIT이고 [LICENSE](LICENSE)에 있습니다. 함께 들어 있는 VLC와 FFmpeg
 `msvdx_firmware` 패키지의 인텔 GMA500 펌웨어는 인텔 라이선스에 따라 수정 없이
 재배포하며, 라이선스 전문이 함께 설치됩니다.
 
-## AI 활용 고지
+## AI 사용 고지
 
-이 프로그램은 Claude와 함께 작업해 만들었습니다.
+R Television의 일부는 AI 코딩 도구(Anthropic Claude)의 도움을 받아 개발했습니다.
+모든 코드는 작성자가 검토하고 테스트했습니다.

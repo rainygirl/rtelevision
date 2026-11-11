@@ -163,6 +163,6 @@ e segue la licenza di iptv-org.
 Il firmware Intel GMA500 del pacchetto `msvdx_firmware` e' ridistribuito senza
 modifiche secondo la licenza Intel, installata insieme ad esso.
 
-## Nota sull'uso dell'IA
+## Uso dell'IA
 
-Questo programma è stato scritto insieme a Claude.
+Parti di R Television sono state sviluppate con l'aiuto di strumenti di programmazione basati sull'IA (Claude di Anthropic). Tutto il codice è stato rivisto e testato dall'autore.

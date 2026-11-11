@@ -159,6 +159,7 @@ MIT です([LICENSE](LICENSE))。同梱の VLC と FFmpeg のライブラリは�
 `msvdx_firmware` パッケージの Intel GMA500 ファームウェアは、Intel の
 ライセンスに従い無改変で再配布しており、ライセンス全文も一緒にインストールされます。
 
-## AI 利用について
+## AI の利用について
 
-このプログラムは Claude と一緒に作りました。
+R Television の一部は AI コーディングツール (Anthropic の Claude) の支援を受けて開発しました。
+すべてのコードは作者がレビューし、テストしています。
